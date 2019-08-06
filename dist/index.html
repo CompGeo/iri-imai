@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Comp150</title>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">Polygonal Chain Simplification</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+                <a class="nav-link" data-toggle="modal" data-target="#demoModal">Demo</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#resources">Resources</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+<main>
+    <div id="intro" class="container">
+        <h3>Introduction</h3>
+        <div class="section-content">
+        <p>
+            A <a href=https://en.wikipedia.org/wiki/Polygonal_chain">polygonal chain</a> is a series of points connected by line segments.
+            They are commonly used to represent cartographic features (e.g. coastlines, rivers, roads) in the context of GIS (Geospatial Information System),
+            vectorization of digital images in applications like computer vision, or in any application that uses vector graphics.
+        </p>
+        <p>
+            It is often infeasible to maintain the original complexity of a polygonal chain, either because of size and/or computational constraints.
+            Algorithms to simplify polygonal chains are therefore needed to reduce the complexity of the original chain by reducing
+            the number of points while minimizing the variance from the initial structure.
+        </p>
+
+        <p>
+            brief text about RDP, a link, time complexity, why it can be problematic, doesn't minimize segments
+        </p>
+
+        <p>
+            Here, we examine an algorithm introduced by <a href="#paper2">Iri and Imai</a> that addresses the problem of minimizing
+            line segments. While the original method has a time complexity of O(n<sup>3</sup>), we will also present an extension
+            to the algorithm given by Eu and Toussaint in their paper, <a href="#paper1">On Approximating Polygonal Curves in Two and Three Dimensions</a>
+            that improves the time complexity to O(n<sup>2</sup>), perhaps making it a practical alternative to the Ramer-Douglas-Peuker
+            algorithm for certain applications.
+        </p>
+            <p>
+                We will present salient concepts associated with the algorithm, as well as an
+                <a class="alert-link" data-toggle="modal" data-target="#demoModal">interactive demonstration</a>.
+            </p>
+        </div>
+    </div>
+
+    <div id="formulations" class="container">
+        <h4>An aside about min-# vs. min-&epsilon;</h4>
+        <div class="section-content">
+            There are two general formulations of this problem.
+            <ul>
+                <li>
+                    min-#: a threshold for variance (or error), &epsilon;, is specified, while the number of line segments is minimized
+                </li>
+                <li>
+                    min-&epsilon;: the number of line segments is specified, while error, &epsilon;, is minimized
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="iri_imai" class="container">
+        <h3>The Iri-Imai Algorithm for min-#</h3>
+        <div class="section-content">
+            <p>
+                Some text describing the algorithm. Visualization of the DAG
+            </p>
+            <div id="vizDAG">
+                <svg>
+                    <defs> <pattern id="lightstripe" patternUnits="userSpaceOnUse" width="5" height="5"> <image xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg==" x="0" y="0" width="5" height="5"> </image> </pattern> </defs>
+                </svg>
+            </div>
+            <p>
+                Some text about how edges are determined.
+            </p>
+        </div>
+    </div>
+    <div id="parallel_strip" class="container">
+        <h3>
+            The "Parallel Strip" criterion
+        </h3>
+        <div class="section-content">
+            <p>
+                Eu and Toussaint improve the time complexity of Iri and Imai's algorithm for the min-# problem by using the "Parallel Strip" criterion for &epsilon;.
+                By using this relaxed definition of &epsilon; the directed graph
+                described in Iri and Imai's algorithm can be constructed in an asymptotically faster way, yielding an overall
+                time complexity of O(n<sup>2</sup>) for the algorithm.
+            </p>
+            <p>
+                more text here, giving a basic description of the parallel strip.
+            </p>
+            <p>
+                some text about how the parallel strip criterion is equivalent to error discs centered on points in the original line.
+                include a visualization of the parallel strip and a disc.
+            </p>
+            <div id="vizStrip">
+                <svg>
+                    <defs> <pattern id="lightstripe" patternUnits="userSpaceOnUse" width="5" height="5"> <image xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg==" x="0" y="0" width="5" height="5"> </image> </pattern> </defs>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div id="double_cone" class="container">
+        <h3>
+            Using Discs and Double cones to construct G
+        </h3>
+        <div class="section-content">
+            <p>
+                some text about how intersections of double cones formed using the discs can be used to construct G.
+                include a visualization of the double cone intersection, animation.
+            </p>
+            <div id="vizCones">
+                <svg>
+                    <defs> <pattern id="lightstripe" patternUnits="userSpaceOnUse" width="5" height="5"> <image xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg==" x="0" y="0" width="5" height="5"> </image> </pattern> </defs>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div id="demo_start" class="container">
+        <h3>An Interactive Demo of the full algorithm.</h3>
+        <div class="section-content">
+            <p>
+                Demo will allow interactive addition of points, combine the above steps in place.
+            </p>
+            <button class="btn btn-outline-primary" data-toggle="modal" data-target="#demoModal">Start the Demo</button>
+        </div>
+    </div>
+
+    <div id="extensions" class="container">
+        <h3>
+            The Closed Curve case
+        </h3>
+        <div class="section-content">
+        <p>
+            If the polygonal chain is closed (V<sub>1</sub> connects to V<sub>n</sub>), then you must apply the process n times, using
+            each vertex as a starting point, in order to get a global min-# value. Time complexity O(n<sup>3</sup>).
+        </p>
+        </div>
+    </div>
+    <div id="resources" class="container">
+        <h2>Resources</h2>
+        <div class="section-content">
+        <h5>
+            There are some websites that describe other algorithms for polygonal chain simplification.
+        </h5>
+        <p>
+            Ramer-Douglas-Peucker interactive visualization:
+            <ul>
+                <li>
+                    <a href="https://www.karthaus.nl/rdp/">https://www.karthaus.nl/rdp/</a>
+                </li>
+            </ul>
+
+        </p>
+
+        <p>
+            Mike Bostock's Visvalingham-Whyatt interative visualization:
+        <ul>
+            <li>
+            <a href="https://bost.ocks.org/mike/simplify/">https://bost.ocks.org/mike/simplify/</a>
+            </li>
+        </ul>
+
+            And a nice extension that provides non-crossing output:
+        <ul>
+            <li>
+            <a href="https://www.jasondavies.com/simplify/">https://www.jasondavies.com/simplify/</a>
+            </li>
+        </ul>
+        </p>
+
+        <h5>
+            There a great many papers that discuss the topic. Here are some that I found interesting:
+        </h5>
+            <div id="paper2" class="card citation">
+                <div class="card-body">
+                <p>
+                    <b>Hiroshi IMAI, Masao IRI</b>,
+                    Polygonal Approximations of a Curve — Formulations and Algorithms,
+                    Editor(s): Godfried T. TOUSSAINT,
+                    Machine Intelligence and Pattern Recognition,
+                    North-Holland,
+                    Volume 6,
+                    1988,
+                    Pages 71-86,
+                    ISSN 0923-0459,
+                    ISBN 9780444704672,
+                </p>
+                <p>
+                    <a href="https://doi.org/10.1016/B978-0-444-70467-2.50011-4">https://doi.org/10.1016/B978-0-444-70467-2.50011-4</a>
+                </p>
+            </div>
+            </div>
+
+        <div id="paper1" class="card citation">
+            <div class="card-body">
+            <p>
+                <b>D. Eu, G.T. Toussaint</b>,
+                On Approximating Polygonal Curves in Two and Three Dimensions,
+                CVGIP: Graphical Models and Image Processing,
+                Volume 56, Issue 3,
+                1994,
+                Pages 231-246,
+                ISSN 1049-9652.
+            </p>
+            <p>
+                <a href="https://doi.org/10.1006/cgip.1994.1021">https://doi.org/10.1006/cgip.1994.1021</a>
+            </p>
+            <p>This is the paper that introduces the algorithm explored on this page.</p>
+        </div>
+        </div>
+
+        <div class="card citation">
+            <div class="card-body">
+        <p>
+            Chan W.S., Chin F. (1992) Approximation of polygonal curves with minimum number of line segments. In: Ibaraki T., Inagaki Y., Iwama K., Nishizeki T., Yamashita M. (eds) Algorithms and Computation. ISAAC 1992. Lecture Notes in Computer Science, vol 650. Springer, Berlin, Heidelberg
+        </p>
+            <p>
+                <a href="https://doi.org/10.1007/3-540-56279-6_90">https://doi.org/10.1007/3-540-56279-6_90</a>
+            </p>
+            <p>This paper describes another way to improve the time complexity of the Iri-Imai approach to O(n<sup>2</sup>)</p>
+        </div>
+
+        </div>
+
+        insert more citations from reading list, with brief description of results
+        </div>
+    </div>
+
+
+    <!-- Modal -->
+    <div class="modal fade" id="demoModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Interactive Demo</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container">
+                        <div id="vizDemo">
+                            <svg>
+                                <defs> <pattern id="lightstripe" patternUnits="userSpaceOnUse" width="5" height="5"> <image xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg==" x="0" y="0" width="5" height="5"> </image> </pattern> </defs>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<script type="text/javascript" src="index_bundle.js"></script></body>
+</html>
