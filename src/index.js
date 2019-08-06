@@ -625,12 +625,20 @@ strip.updateEdges(stripEdges);
 
 strip.drawGraph();
 
-document.addEventListener('input', function (e) {
-    if (e.target && e.target.id === 'epsilonRange_strip') {
+let striprange = document.getElementById('epsilonRange_strip');
+striprange.value = error;
+let stripeps = document.getElementById("strip-epsilon");
+stripeps.textContent = striprange.value;
+let updateStrips = function (e) {
+    if (e.target) {
+        stripeps.textContent = e.target.value;
         strip.updateError(e.target.value);
         strip.drawGraph(false);
     }
-});
+};
+striprange.addEventListener('change', updateStrips);
+striprange.addEventListener('input', updateStrips);
+
 
 let dataCones = {
     "nodes": [
