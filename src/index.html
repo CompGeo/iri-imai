@@ -120,14 +120,14 @@
                 include a visualization of the parallel strip and a disc.
             </p>
             <div id="vizStrip">
-                <svg>
-                    <defs>
-                        <pattern id="lightstripe" patternUnits="userSpaceOnUse" width="5" height="5">
-                            <image xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg=="
-                                   x="0" y="0" width="5" height="5"></image>
-                        </pattern>
-                    </defs>
-                </svg>
+                <form>
+                    <div class="form-group">
+                        <label for="epsilonRange_strip">Vary &epsilon; to see the interaction between a disc and the
+                            parallel strip.</label>
+                        <input type="range" class="form-control-range" min="0" max="40" id="epsilonRange_strip"
+                               style="width:50%;">
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -142,14 +142,6 @@
                 include a visualization of the double cone intersection, animation.
             </p>
             <div id="vizCones">
-                <svg>
-                    <defs>
-                        <pattern id="lightstripe" patternUnits="userSpaceOnUse" width="5" height="5">
-                            <image xlink:href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1JyBoZWlnaHQ9JzUnPgogIDxyZWN0IHdpZHRoPSc1JyBoZWlnaHQ9JzUnIGZpbGw9J3doaXRlJy8+CiAgPHBhdGggZD0nTTAgNUw1IDBaTTYgNEw0IDZaTS0xIDFMMSAtMVonIHN0cm9rZT0nIzg4OCcgc3Ryb2tlLXdpZHRoPScxJy8+Cjwvc3ZnPg=="
-                                   x="0" y="0" width="5" height="5"></image>
-                        </pattern>
-                    </defs>
-                </svg>
             </div>
         </div>
     </div>
