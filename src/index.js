@@ -2,6 +2,7 @@ import * as bootstrap from 'bootstrap';
 import * as d3 from 'd3';
 import './styles/main.scss';
 import cloneDeep from 'lodash/cloneDeep';
+import {ShapeInfo, Intersection} from "kld-intersections";
 
 
 function drawExampleViz(el, data, error, height, width) {
@@ -290,7 +291,7 @@ function drawExampleViz(el, data, error, height, width) {
                         let p1 = data.nodes[d.source].coordinates;
                         let p2 = data.nodes[d.target].coordinates;
 
-                        let pts = getExtremePointsForLine(p1, p2);
+                        let pts = getEdgePointsForLine(p1, p2);
                         return xScale(pts[0][0]);
                     })
                     .attr("y1", function (d) {
@@ -298,7 +299,7 @@ function drawExampleViz(el, data, error, height, width) {
                         let p1 = data.nodes[d.source].coordinates;
                         let p2 = data.nodes[d.target].coordinates;
 
-                        let pts = getExtremePointsForLine(p1, p2);
+                        let pts = getEdgePointsForLine(p1, p2);
                         return yScale(pts[0][1]);
                     })
                     .attr("x2", function (d) {
@@ -306,7 +307,7 @@ function drawExampleViz(el, data, error, height, width) {
                         let p1 = data.nodes[d.source].coordinates;
                         let p2 = data.nodes[d.target].coordinates;
 
-                        let pts = getExtremePointsForLine(p1, p2);
+                        let pts = getEdgePointsForLine(p1, p2);
                         return xScale(pts[1][0]);
                     })
                     .attr("y2", function (d) {
@@ -314,7 +315,7 @@ function drawExampleViz(el, data, error, height, width) {
                         let p1 = data.nodes[d.source].coordinates;
                         let p2 = data.nodes[d.target].coordinates;
 
-                        let pts = getExtremePointsForLine(p1, p2);
+                        let pts = getEdgePointsForLine(p1, p2);
                         return yScale(pts[1][1]);
                     })
                     .style("stroke", function (d) {
@@ -354,41 +355,85 @@ function drawExampleViz(el, data, error, height, width) {
                         .attr("y", 30)
                         .remove())
             );
+
+        let coneData = data.edges.filter(function (i) {
+            return i.cone
+        });
+
+
+        stripContainer.selectAll('polyline')
+            .data(coneData)
+            .join(
+                enter => enter.append('polyline')
+                    .attr('points', function (d) {
+                        let p1 = data.nodes[d.source].coordinates;
+                        let p2 = data.nodes[d.target].coordinates;
+                        let points = getDiscTangentPoints(p1, p2, d.epsilon);
+
+                        let pe1 = getExtremePointsForLine(p1, points[0]);
+                        let pe2 = getExtremePointsForLine(p1, points[1]);
+
+                        console.log('extreme points!!!!!');
+                        console.log(pe1);
+                        console.log(pe2);
+                        let trianglePoints = xScale(p1.x) + ' ' + yScale(p1.y) + ', ' + xScale(pe1[1].x) + ' ' + yScale(pe1[1].y) + ', ';
+                        trianglePoints += xScale(pe2[1].x) + ' ' + yScale(pe2[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
+                        // let trianglePoints2 = xScale(p1.x) + ' ' + yScale(p1.y) + ', ';
+                        trianglePoints += ', ' + xScale(pe1[0].x) + ' ' + yScale(pe1[0].y) + ', ';
+                        trianglePoints += xScale(pe2[0].x) + ' ' + yScale(pe2[0].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
+                        console.log(trianglePoints);
+                        return trianglePoints;
+                    })
+                    .style('stroke', 'blue')
+                    .style('stroke-width', "1")
+                    .style('stroke-opacity', '1')
+                    .style('fill', 'blue')
+                    .style('opacity', '0.2'),
+                update => update
+                    .call(update => update.transition(t)
+                        .attr("x", (d, i) => i * 16)),
+                exit => exit
+                    .attr("fill", "brown")
+                    .call(exit => exit.transition(t)
+                        .attr("y", 30)
+                        .remove())
+            );
+
     }
 
     function testEdgeIntersections(p1, p2) {
         // which borders does the line given by these points intersect?
-        let leftX = true;
-        let rightX = true;
-        let topY = true;
-        let bottomY = true;
+        let leftX = false;
+        let rightX = false;
+        let topY = false;
+        let bottomY = false;
 
         let xTopY = getXFromYForLine(p1, p2, ymax);
-
-        if (xTopY > xmax || xTopY < xmin) {
-            // doesn't intersect top boundary in range
-            topY = false;
+        console.log(xTopY);
+        if ((xTopY <= xmax) && (xTopY >= xmin)) {
+            // intersect top boundary in range
+            topY = true;
         }
 
         let xBottomY = getXFromYForLine(p1, p2, ymin);
-
-        if (xBottomY > xmax || xBottomY < xmin) {
-            // doesn't intersect bottom boundary in range
-            bottomY = false;
+        console.log(xBottomY);
+        if (((xBottomY <= xmax) && (xBottomY >= xmin))) {
+            // intersects bottom boundary in range
+            bottomY = true;
         }
 
-        let yLeftX = getYFromXForLine(p1, p2, xmin);
-
-        if (yLeftX > ymax || yLeftX < ymin) {
-            // doesn't intersect left boundary in range
-            leftX = false;
+        let yLeftX = Math.floor(getYFromXForLine(p2, p1, xmin));
+        console.log(yLeftX);
+        if (((yLeftX <= ymax) && (yLeftX >= ymin))) {
+            // intersect left boundary in range
+            leftX = true;
         }
 
-        let yRightX = getYFromXForLine(p1, p2, xmax);
-
-        if (yRightX > ymax || yRightX < ymin) {
-            // doesn't intersect right boundary in range
-            rightX = false;
+        let yRightX = Math.floor(getYFromXForLine(p1, p2, xmax));
+        console.log(yRightX);
+        if (((yRightX <= ymax) && (yRightX >= ymin))) {
+            // intersect right boundary in range
+            rightX = true;
         }
 
         return {
@@ -401,34 +446,75 @@ function drawExampleViz(el, data, error, height, width) {
     }
 
     function getYFromXForLine(p1, p2, x) {
-        return (p1.y - p2.y) * (x - p2.x) / (p1.x - p2.x) + p2.y;
+        return (x * (p1.y - p2.y) - (p2.x * p1.y) + (p1.x * p2.y)) / (p1.x - p2.x)
     }
 
     function getXFromYForLine(p1, p2, y) {
-        return (p1.y - p2.y) * (y - p2.y) / (p1.y - p2.y) + p2.x;
+        return (y * (p1.x - p2.x) - (p1.x * p2.y) + (p2.x * p1.y)) / (p1.y - p2.y);
     }
 
-    function getExtremePointsForLine(p1, p2) {
+
+    function getEdgePointsForLine(p1, p2) {
+        let eymin = ymin;
+        let exmin = xmin;
+        let eymax = ymax;
+        let exmax = xmax;
+
         if (isVertical(p1, p2)) {
-            return [[p1.x, ymin], [p1.x, ymax]];
+            return [[p1.x, eymin], [p1.x, eymax]];
         }
         if (isHorizontal(p1, p2)) {
-            return [[xmin, p1.y], [xmax, p1.y]];
+            return [[exmin, p1.y], [exmax, p1.y]];
         }
 
         let itx = testEdgeIntersections(p1, p2);
         if (itx.top && itx.left) {
-            return [[xmin, getYFromXForLine(p1, p2, xmin)], [getXFromYForLine(p1, p2, ymax), ymax]];
+            return [[exmin, getYFromXForLine(p1, p2, exmin)], [getXFromYForLine(p1, p2, eymax), eymax]];
         } else if (itx.top && itx.right) {
-            return [[getXFromYForLine(p1, p2, ymax), ymax], [xmax, getYFromXForLine(p1, p2, xmax)]];
+            return [[getXFromYForLine(p1, p2, eymax), eymax], [exmax, getYFromXForLine(p1, p2, exmax)]];
         } else if (itx.top & itx.bottom) {
-            return [[getXFromYForLine(p1, p2, ymax), ymax], [getXFromYForLine(p1, p2, ymin), ymin]];
+            return [[getXFromYForLine(p1, p2, eymax), eymax], [getXFromYForLine(p1, p2, eymin), eymin]];
         } else if (itx.left && itx.right) {
-            return [[xmin, getYFromXForLine(p1, p2, xmin)], [xmax, getYFromXForLine(p1, p2, xmax)]];
+            return [[exmin, getYFromXForLine(p1, p2, exmin)], [xmax, getYFromXForLine(p1, p2, exmax)]];
         } else if (itx.left && itx.bottom) {
-            return [[xmin, getYFromXForLine(p1, p2, xmin)], [getXFromYForLine(p1, p2, ymin), ymin]];
+            return [[exmin, getYFromXForLine(p1, p2, exmin)], [getXFromYForLine(p1, p2, eymin), eymin]];
         } else if (itx.right && itx.bottom) {
-            return [[getXFromYForLine(p1, p2, ymin), ymin], [xmax, getYFromXForLine(p1, p2, xmax)]];
+            return [[getXFromYForLine(p1, p2, eymin), eymin], [exmax, getYFromXForLine(p1, p2, exmax)]];
+        } else {
+            console.log('no itx?');
+            console.log(itx);
+        }
+    }
+
+    function getExtremePointsForLine(p1, p2) {
+
+        let eymin = -100;
+        let exmin = -100;
+        let eymax = 200;
+        let exmax = 200;
+
+        if (isVertical(p1, p2)) {
+            return [{x: p1.x, y: eymin}, {x: p1.x, y: eymax}];
+        }
+        if (isHorizontal(p1, p2)) {
+            return [{x: exmin, y: p1.y}, {x: exmax, y: p1.y}];
+        }
+
+        let itx = testEdgeIntersections(p1, p2);
+        console.log(itx);
+        // todo: order matters here. think it through.
+        if (itx.top && itx.left) {
+            return [{x: getXFromYForLine(p1, p2, eymax), y: eymax}, {x: exmin, y: getYFromXForLine(p1, p2, exmin)}];
+        } else if (itx.top && itx.right) {
+            return [{x: getXFromYForLine(p1, p2, eymax), y: eymax}, {x: exmax, y: getYFromXForLine(p1, p2, exmax)}];
+        } else if (itx.top & itx.bottom) {
+            return [{x: getXFromYForLine(p1, p2, eymax), y: eymax}, {x: getXFromYForLine(p1, p2, eymin), y: eymin}];
+        } else if (itx.left && itx.right) {
+            return [{x: exmin, y: getYFromXForLine(p1, p2, exmin)}, {x: xmax, y: getYFromXForLine(p1, p2, exmax)}];
+        } else if (itx.left && itx.bottom) {
+            return [{x: exmin, y: getYFromXForLine(p1, p2, exmin)}, {x: getXFromYForLine(p1, p2, eymin), y: eymin}];
+        } else if (itx.right && itx.bottom) {
+            return [{x: getXFromYForLine(p1, p2, eymin), y: eymin}, {x: exmax, y: getYFromXForLine(p1, p2, exmax)}];
         } else {
             console.log('no itx?');
             console.log(itx);
@@ -459,35 +545,31 @@ function drawExampleViz(el, data, error, height, width) {
         const b = p2.x - p1.x;
         const c = (p1.x * p2.y) - (p2.x * p1.y);
 
-        return Math.abs((a * p.x + b * p.y + c)) / (Math.sqrt(a * a + b * b))
+        return Math.abs((a * pd.x + b * pd.y + c)) / (Math.sqrt(a * a + b * b))
     }
 
-    function getDiscTangentPoints(p1, p2) {
-        if (isVertical(p1, p2)) {
-            // perpendicular line is horizontal
-            return [{'x': p2.x - error, 'y': p2.y}, {'x': p2.x + error, 'y': p2.y}];
-        }
-        let slope = getSlope(p1, p2);
-        if (slope === 0) {
-            // perpendicular line is vertical
-            return [{'x': p2.x, 'y': p2.y - error}, {'x': p2.x, 'y': p2.y + error}];
-        } else {
-            // y = mx + b
-            let newSlope = -1 / slope;
-        }
+    function euclideanDistance(p1, p2) {
+        return Math.sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
     }
 
-    function generateCone(p1, p2) {
-        let trianglePoints = xScale(p1.x) + ' ' + yScale(p1.y) + ', ' + xScale(50) + ' ' + yScale(55) + ', ';
-        trianglePoints += xScale(50) + ' ' + yScale(45) + ' ' + xScale(p1.x) + ', ' + yScale(p1.y);
-        svg.append('polyline')
-            .attr('points', trianglePoints)
-            .style('stroke', 'blue')
-            .style('stroke-width', "1")
-            .style('stroke-opacity', '1')
-            .style('fill', 'blue')
-            .style('opacity', '0.2');
+
+    function getDiscTangentPoints(p1, p2, err) {
+        /**
+         *
+         */
+            //console.log('inv error');
+            //console.log(xScale.invert(err));
+        let d = euclideanDistance(p1, p2);
+        let c1 = ShapeInfo.circle({center: {x: p1.x, y: p1.y}, radius: d});
+        let c2 = ShapeInfo.circle({center: {x: p2.x, y: p2.y}, radius: xScale.invert(err)});
+        let itx = Intersection.intersect(c2, c1);
+        console.log('int');
+        console.log(itx);
+        console.log(d);
+        console.log(err);
+        return itx.points;
     }
+
 
     function showApprox() {
         data.edges.forEach(function (i) {
@@ -515,163 +597,6 @@ function drawExampleViz(el, data, error, height, width) {
     }
 }
 
-
-function drawDiscsCones() {
-    let data = {
-        "nodes": [
-            {"coordinates": {"x": 5, "y": 10}, "disc": false},
-            {"coordinates": {"x": 50, "y": 50}, "disc": true},
-            {"coordinates": {"x": 60, "y": 40}, "disc": true}
-
-        ],
-        "edges": [
-            {"source": 0, "target": 1, "cone": true},
-            {"source": 1, "target": 2, "cone": true}
-        ]
-    };
-
-    let error = 8;
-
-// todo: dynamic height and width (so range should also be dynamic)
-    let height = 500;
-    let width = 500;
-    const xScale = d3.scaleLinear().domain([0, 100]).range([0, width]);
-    const yScale = d3.scaleLinear().domain([100, 0]).range([0, height]);
-
-    let svg = d3.select("#vizCones > svg")
-        .attr("width", width)
-        .attr("height", height)
-        .attr("style", "border: 1px solid black")
-        .append("g")
-        .attr("transform", function (d, i) {
-            return "translate(0,0)";
-        });
-
-    let discContainer = svg
-        .append("g")
-        .attr("id", "disc-container");
-
-    let chainContainer = svg.append("g")
-        .attr("id", "chain-container");
-
-    function drawGraph() {
-
-        let edges = chainContainer.selectAll("line")
-            .data(data.edges)
-            .enter()
-            .append("line")
-            .attr("x1", function (d) {
-                return xScale(data.nodes[d.source].coordinates.x);
-            })
-            .attr("y1", function (d) {
-                return yScale(data.nodes[d.source].coordinates.y);
-            })
-            .attr("x2", function (d) {
-                return xScale(data.nodes[d.target].coordinates.x);
-            })
-            .attr("y2", function (d) {
-                return yScale(data.nodes[d.target].coordinates.y);
-            })
-            .style("stroke", function (d) {
-                if (d.approx) {
-                    return "blue";
-                } else {
-                    return "#000000";
-                }
-            })
-            .style("stroke-dasharray", function (d) {
-                if (d.approx) {
-                    return "2,2";
-                } else {
-                    return "";
-                }
-            })
-            .style("stroke-width", function (d) {
-                if (d.approx) {
-                    return "1";
-                } else {
-                    return "2";
-                }
-            });
-
-        let vertices = chainContainer
-            .selectAll("circle")
-            .data(data.nodes)
-            .enter()
-            .append("circle")
-            .attr("cx", function (d) {
-                return xScale(d.coordinates.x);
-            })
-            .attr("cy", function (d) {
-                return yScale(d.coordinates.y);
-            })
-            .attr("r", 5)
-            .style("fill", function (d) {
-                return "#FF0000";
-            });
-    }
-
-
-    function updateErrorDiscs() {
-        let discs = discContainer.selectAll("circle")
-            .data(data.nodes)
-            .enter()
-            .append("circle")
-            .attr("cx", function (d) {
-                return xScale(d.coordinates.x);
-            })
-            .attr("cy", function (d) {
-                return yScale(d.coordinates.y);
-            })
-            .attr("r", function (d) {
-                return d.disc ? 2 * error : 0;
-            })
-            .style("fill", "url(#lightstripe)")
-            .style("stroke", "#000")
-            .style("strokewidth", "1");
-    }
-
-
-    function isVertical(p1, p2) {
-        return (p2.x - p1.x) === 0;
-    }
-
-    function getSlope(p1, p2) {
-        return (p2.y - p1.y) / (p2.x - p1.x);
-    }
-
-
-    function getDiscTangentPoints(p1, p2) {
-        if (isVertical(p1, p2)) {
-            // perpendicular line is horizontal
-            return [{'x': p2.x - error, 'y': p2.y}, {'x': p2.x + error, 'y': p2.y}];
-        }
-        let slope = getSlope(p1, p2);
-        if (slope === 0) {
-            // perpendicular line is vertical
-            return [{'x': p2.x, 'y': p2.y - error}, {'x': p2.x, 'y': p2.y + error}];
-        } else {
-            // y = mx + b
-            let newSlope = -1 / slope;
-        }
-    }
-
-    function generateCone(p1, p2) {
-        let trianglePoints = xScale(p1.x) + ' ' + yScale(p1.y) + ', ' + xScale(50) + ' ' + yScale(55) + ', ';
-        trianglePoints += xScale(50) + ' ' + yScale(45) + ' ' + xScale(p1.x) + ', ' + yScale(p1.y);
-        svg.append('polyline')
-            .attr('points', trianglePoints)
-            .style('stroke', 'blue')
-            .style('stroke-width', "1")
-            .style('stroke-opacity', '1')
-            .style('fill', 'blue')
-            .style('opacity', '0.2');
-    }
-
-    drawGraph();
-    generateCone(data.nodes[0].coordinates, data.nodes[1].coordinates);
-    updateErrorDiscs();
-}
 
 
 const demoData = {
@@ -748,29 +673,30 @@ let updateStrips = function (e) {
     if (e.target) {
         stripeps.textContent = e.target.value;
         strip.updateError(e.target.value);
-        strip.drawGraph(false);
+        strip.drawGraph();
     }
 };
 striprange.addEventListener('change', updateStrips);
 striprange.addEventListener('input', updateStrips);
 
 
-let dataCones = {
+let dataCones = cloneDeep(demoData);
+let updateCones = {
     "nodes": [
-        {"coordinates": {"x": 5, "y": 10}, "disc": false},
-        {"coordinates": {"x": 50, "y": 50}, "disc": true},
-        {"coordinates": {"x": 60, "y": 40}, "disc": true}
+        {"coordinates": {"x": 20, "y": 55}, "disc": true},
+        {"coordinates": {"x": 19, "y": 37}, "disc": true},
+        {"coordinates": {"x": 25, "y": 41, "disc": true}}
 
     ],
     "edges": [
-        {"source": 0, "target": 1, "cone": true},
-        {"source": 1, "target": 2, "cone": true}
+        {"source": 0, "target": 1, "cone": true, "show": true},
+        {"source": 1, "target": 2, "cone": true, "show": true}
     ]
 };
 
 let cones = drawExampleViz("#vizCones", dataCones, 25, height, width);
-cones.updateNodes(dataCones.nodes);
-cones.updateEdges(dataCones.edges);
+cones.updateNodes(updateCones.nodes);
+cones.updateEdges(updateCones.edges);
 cones.drawGraph();
 //drawDiscsCones();
 
