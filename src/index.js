@@ -759,9 +759,12 @@ let updateCones = {
 
     ],
     "edges": [
-        {"source": 0, "target": 1, "strip": false, "cone": false},
+        {"source": 0, "target": 1, "strip": false, "cone": true},
+        {"source": 0, "target": 2, "approx": true, "show": true, "strip": false, "cone": true},
+        {"source": 0, "target": 3, "approx": true, "show": true, "strip": false, "cone": true},
+
         {"source": 1, "target": 2, "strip": false, "cone": false},
-        {"source": 2, "target": 3, "strip": false, "cone": true},
+        {"source": 2, "target": 3, "strip": false, "cone": false},
         {"source": 3, "target": 4, "strip": false, "cone": false},
         {"source": 4, "target": 5, "strip": false, "cone": false},
         {"source": 5, "target": 6, "strip": false, "cone": false},
@@ -777,7 +780,7 @@ dataCones.nodes.forEach(function (n) {
     n.disc = true;
 });
 
-let cones = drawExampleViz("#vizCones", dataCones, 40, height, width);
+let cones = drawExampleViz("#vizCones", dataCones, 25, height, width);
 cones.updateNodes(updateCones.nodes);
 cones.updateEdges(updateCones.edges);
 cones.drawGraph();
