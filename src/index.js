@@ -164,7 +164,7 @@ function drawExampleViz(el, data, error, height, width) {
     function getEdges() {
         return data.edges.filter(function (e) {
             return (!e.approx) || (e.approx && e.show);
-        })
+        });
     }
 
     function drawGraph() {
@@ -368,19 +368,44 @@ function drawExampleViz(el, data, error, height, width) {
                     .attr('points', function (d) {
                         let p1 = data.nodes[d.source].coordinates;
                         let p2 = data.nodes[d.target].coordinates;
-                        let points = getDiscTangentPoints(p1, p2, d.epsilon);
+                        let points = [];
+                        let doubleCone = true;
+                        try {
+                            points = getDiscTangentPoints(p1, p2, d.epsilon);
+                        } catch (e) {
+                            console.log('dont draw a cone');
+                            doubleCone = false;
+                        }
 
+                        if (!doubleCone) {
+                            // open cone == the whole plane
+                            let openCone = xScale(xmin) + ' ' + yScale(ymin) + ', ' + xScale(xmin) + ' ' + yScale(ymax);
+                            openCone += ', ' + xScale(xmax) + ' ' + yScale(ymax) + ', ' + xScale(xmax) + ' ';
+                            openCone += yScale(ymin) + ', ' + xScale(xmin) + ' ' + yScale(ymin);
+                            return openCone;
+                        }
                         let pe1 = getExtremePointsForLine(p1, points[0]);
                         let pe2 = getExtremePointsForLine(p1, points[1]);
 
-                        console.log('extreme points!!!!!');
-                        console.log(pe1);
-                        console.log(pe2);
-                        let trianglePoints = xScale(p1.x) + ' ' + yScale(p1.y) + ', ' + xScale(pe1[1].x) + ' ' + yScale(pe1[1].y) + ', ';
-                        trianglePoints += xScale(pe2[1].x) + ' ' + yScale(pe2[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
-                        // let trianglePoints2 = xScale(p1.x) + ' ' + yScale(p1.y) + ', ';
-                        trianglePoints += ', ' + xScale(pe1[0].x) + ' ' + yScale(pe1[0].y) + ', ';
-                        trianglePoints += xScale(pe2[0].x) + ' ' + yScale(pe2[0].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
+
+                        let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
+                        let forward = [];
+                        let backward = [];
+                        // gather segments on each side of p1 to construct cones as polylines
+                        ex_points.forEach(function (p) {
+                            if (pointIsOn(p1, p, points[0]) || pointIsOn(p1, p, points[1])) {
+
+                                forward.push(p);
+                            } else {
+                                backward.push(p);
+                            }
+                        });
+
+                        // need to maintain clockwise order, pair up points properly
+                        let trianglePoints = xScale(p1.x) + ' ' + yScale(p1.y) + ', ' + xScale(forward[0].x) + ' ' + yScale(forward[0].y) + ', ';
+                        trianglePoints += xScale(forward[1].x) + ' ' + yScale(forward[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
+                        trianglePoints += ', ' + xScale(backward[0].x) + ' ' + yScale(backward[0].y) + ', ';
+                        trianglePoints += xScale(backward[1].x) + ' ' + yScale(backward[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
                         console.log(trianglePoints);
                         return trianglePoints;
                     })
@@ -399,6 +424,41 @@ function drawExampleViz(el, data, error, height, width) {
                         .remove())
             );
 
+    }
+
+    /**
+     * these 3 functions are ported and revised from python, Bryan Hayes's chapter in Beautiful Code
+     * @param a
+     * @param b
+     * @param c
+     */
+    function pointIsBetween(a, b, c) {
+
+        if (a.x !== b.x) {
+            return within(a.x, c.x, b.x) && within(a.y, c.y, b.y);
+        } else {
+            return within(a.y, c.y, b.y);
+        }
+    }
+
+    function pointIsOn(a, b, c) {
+        //"Return true iff point c intersects the line segment from a to b.
+        // (or the degenerate case that all 3 points are coincident)
+
+        return (collinear(a, b, c) && pointIsBetween(a, b, c));
+    }
+
+
+    function collinear(a, b, c) {
+        //"Return true iff a, b, and c all lie on the same line."
+        let l1 = (b.x - a.x) * (c.y - a.y);
+        let l2 = (c.x - a.x) * (b.y - a.y);
+        return Math.abs(l1 - l2) < 1;
+    }
+
+    function within(p, q, r) {
+        //"Return true iff q is between p and r (inclusive)."
+        return ((p <= q) && (q <= r)) || ((r <= q) && (q <= p));
     }
 
     function testEdgeIntersections(p1, p2) {
@@ -501,24 +561,31 @@ function drawExampleViz(el, data, error, height, width) {
         }
 
         let itx = testEdgeIntersections(p1, p2);
-        console.log(itx);
-        // todo: order matters here. think it through.
-        if (itx.top && itx.left) {
-            return [{x: getXFromYForLine(p1, p2, eymax), y: eymax}, {x: exmin, y: getYFromXForLine(p1, p2, exmin)}];
-        } else if (itx.top && itx.right) {
-            return [{x: getXFromYForLine(p1, p2, eymax), y: eymax}, {x: exmax, y: getYFromXForLine(p1, p2, exmax)}];
-        } else if (itx.top & itx.bottom) {
-            return [{x: getXFromYForLine(p1, p2, eymax), y: eymax}, {x: getXFromYForLine(p1, p2, eymin), y: eymin}];
-        } else if (itx.left && itx.right) {
-            return [{x: exmin, y: getYFromXForLine(p1, p2, exmin)}, {x: xmax, y: getYFromXForLine(p1, p2, exmax)}];
-        } else if (itx.left && itx.bottom) {
-            return [{x: exmin, y: getYFromXForLine(p1, p2, exmin)}, {x: getXFromYForLine(p1, p2, eymin), y: eymin}];
-        } else if (itx.right && itx.bottom) {
-            return [{x: getXFromYForLine(p1, p2, eymin), y: eymin}, {x: exmax, y: getYFromXForLine(p1, p2, exmax)}];
-        } else {
-            console.log('no itx?');
-            console.log(itx);
+
+        let points = [];
+
+        if (itx.top) {
+            points.push({x: getXFromYForLine(p1, p2, eymax), y: eymax});
         }
+
+        if (itx.bottom) {
+            points.push({x: getXFromYForLine(p1, p2, eymin), y: eymin});
+        }
+
+        if (itx.left) {
+            points.push({x: exmin, y: getYFromXForLine(p1, p2, exmin)});
+        }
+
+        if (itx.right) {
+            points.push({x: exmax, y: getYFromXForLine(p1, p2, exmax)});
+        }
+
+        if (points.length !== 2) {
+            console.log(points);
+            throw new Error('wrong number of points!');
+        }
+
+        return points;
     }
 
     function isVertical(p1, p2) {
@@ -560,13 +627,17 @@ function drawExampleViz(el, data, error, height, width) {
             //console.log('inv error');
             //console.log(xScale.invert(err));
         let d = euclideanDistance(p1, p2);
+        let eps = xScale.invert(err);
+        if (eps >= d) {
+            throw new Error('circles are too close!');
+        }
         let c1 = ShapeInfo.circle({center: {x: p1.x, y: p1.y}, radius: d});
-        let c2 = ShapeInfo.circle({center: {x: p2.x, y: p2.y}, radius: xScale.invert(err)});
+        let c2 = ShapeInfo.circle({center: {x: p2.x, y: p2.y}, radius: eps});
         let itx = Intersection.intersect(c2, c1);
         console.log('int');
         console.log(itx);
         console.log(d);
-        console.log(err);
+        console.log(eps);
         return itx.points;
     }
 
@@ -596,7 +667,6 @@ function drawExampleViz(el, data, error, height, width) {
         hideApproximation: hideApprox
     }
 }
-
 
 
 const demoData = {
@@ -689,12 +759,25 @@ let updateCones = {
 
     ],
     "edges": [
-        {"source": 0, "target": 1, "cone": true, "show": true},
-        {"source": 1, "target": 2, "cone": true, "show": true}
+        {"source": 0, "target": 1, "strip": false, "cone": false},
+        {"source": 1, "target": 2, "strip": false, "cone": false},
+        {"source": 2, "target": 3, "strip": false, "cone": true},
+        {"source": 3, "target": 4, "strip": false, "cone": false},
+        {"source": 4, "target": 5, "strip": false, "cone": false},
+        {"source": 5, "target": 6, "strip": false, "cone": false},
+        {"source": 6, "target": 7, "strip": false, "cone": false},
+        {"source": 7, "target": 8, "strip": false, "cone": false}
     ]
 };
 
-let cones = drawExampleViz("#vizCones", dataCones, 25, height, width);
+// test cones
+
+
+dataCones.nodes.forEach(function (n) {
+    n.disc = true;
+});
+
+let cones = drawExampleViz("#vizCones", dataCones, 40, height, width);
 cones.updateNodes(updateCones.nodes);
 cones.updateEdges(updateCones.edges);
 cones.drawGraph();
