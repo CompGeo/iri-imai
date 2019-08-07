@@ -5,9 +5,12 @@ import cloneDeep from 'lodash/cloneDeep';
 
 
 function drawExampleViz(el, data, error, height, width) {
-
-    const xScale = d3.scaleLinear().domain([0, 100]).range([0, width]);
-    const yScale = d3.scaleLinear().domain([100, 0]).range([0, height]);
+    const ymin = 0;
+    const xmin = 0;
+    const ymax = 100;
+    const xmax = 100;
+    const xScale = d3.scaleLinear().domain([xmin, xmax]).range([0, width]);
+    const yScale = d3.scaleLinear().domain([ymax, ymin]).range([0, height]);
 
     let epsilon = error;
 
@@ -284,19 +287,35 @@ function drawExampleViz(el, data, error, height, width) {
                 enter => enter.append("line")
                     .attr("x1", function (d) {
                         if (!d.strip) return null;
-                        return xScale(data.nodes[d.source].coordinates.x);
+                        let p1 = data.nodes[d.source].coordinates;
+                        let p2 = data.nodes[d.target].coordinates;
+
+                        let pts = getExtremePointsForLine(p1, p2);
+                        return xScale(pts[0][0]);
                     })
                     .attr("y1", function (d) {
                         if (!d.strip) return null;
-                        return yScale(data.nodes[d.source].coordinates.y);
+                        let p1 = data.nodes[d.source].coordinates;
+                        let p2 = data.nodes[d.target].coordinates;
+
+                        let pts = getExtremePointsForLine(p1, p2);
+                        return yScale(pts[0][1]);
                     })
                     .attr("x2", function (d) {
                         if (!d.strip) return null;
-                        return xScale(data.nodes[d.target].coordinates.x);
+                        let p1 = data.nodes[d.source].coordinates;
+                        let p2 = data.nodes[d.target].coordinates;
+
+                        let pts = getExtremePointsForLine(p1, p2);
+                        return xScale(pts[1][0]);
                     })
                     .attr("y2", function (d) {
                         if (!d.strip) return null;
-                        return yScale(data.nodes[d.target].coordinates.y);
+                        let p1 = data.nodes[d.source].coordinates;
+                        let p2 = data.nodes[d.target].coordinates;
+
+                        let pts = getExtremePointsForLine(p1, p2);
+                        return yScale(pts[1][1]);
                     })
                     .style("stroke", function (d) {
                         if (d.strip) {
@@ -337,15 +356,111 @@ function drawExampleViz(el, data, error, height, width) {
             );
     }
 
+    function testEdgeIntersections(p1, p2) {
+        // which borders does the line given by these points intersect?
+        let leftX = true;
+        let rightX = true;
+        let topY = true;
+        let bottomY = true;
+
+        let xTopY = getXFromYForLine(p1, p2, ymax);
+
+        if (xTopY > xmax || xTopY < xmin) {
+            // doesn't intersect top boundary in range
+            topY = false;
+        }
+
+        let xBottomY = getXFromYForLine(p1, p2, ymin);
+
+        if (xBottomY > xmax || xBottomY < xmin) {
+            // doesn't intersect bottom boundary in range
+            bottomY = false;
+        }
+
+        let yLeftX = getYFromXForLine(p1, p2, xmin);
+
+        if (yLeftX > ymax || yLeftX < ymin) {
+            // doesn't intersect left boundary in range
+            leftX = false;
+        }
+
+        let yRightX = getYFromXForLine(p1, p2, xmax);
+
+        if (yRightX > ymax || yRightX < ymin) {
+            // doesn't intersect right boundary in range
+            rightX = false;
+        }
+
+        return {
+            left: leftX,
+            right: rightX,
+            top: topY,
+            bottom: bottomY
+        }
+
+    }
+
+    function getYFromXForLine(p1, p2, x) {
+        return (p1.y - p2.y) * (x - p2.x) / (p1.x - p2.x) + p2.y;
+    }
+
+    function getXFromYForLine(p1, p2, y) {
+        return (p1.y - p2.y) * (y - p2.y) / (p1.y - p2.y) + p2.x;
+    }
+
+    function getExtremePointsForLine(p1, p2) {
+        if (isVertical(p1, p2)) {
+            return [[p1.x, ymin], [p1.x, ymax]];
+        }
+        if (isHorizontal(p1, p2)) {
+            return [[xmin, p1.y], [xmax, p1.y]];
+        }
+
+        let itx = testEdgeIntersections(p1, p2);
+        if (itx.top && itx.left) {
+            return [[xmin, getYFromXForLine(p1, p2, xmin)], [getXFromYForLine(p1, p2, ymax), ymax]];
+        } else if (itx.top && itx.right) {
+            return [[getXFromYForLine(p1, p2, ymax), ymax], [xmax, getYFromXForLine(p1, p2, xmax)]];
+        } else if (itx.top & itx.bottom) {
+            return [[getXFromYForLine(p1, p2, ymax), ymax], [getXFromYForLine(p1, p2, ymin), ymin]];
+        } else if (itx.left && itx.right) {
+            return [[xmin, getYFromXForLine(p1, p2, xmin)], [xmax, getYFromXForLine(p1, p2, xmax)]];
+        } else if (itx.left && itx.bottom) {
+            return [[xmin, getYFromXForLine(p1, p2, xmin)], [getXFromYForLine(p1, p2, ymin), ymin]];
+        } else if (itx.right && itx.bottom) {
+            return [[getXFromYForLine(p1, p2, ymin), ymin], [xmax, getYFromXForLine(p1, p2, xmax)]];
+        } else {
+            console.log('no itx?');
+            console.log(itx);
+        }
+    }
 
     function isVertical(p1, p2) {
         return (p2.x - p1.x) === 0;
+    }
+
+    function isHorizontal(p1, p2) {
+        return (p2.y - p1.y) === 0;
     }
 
     function getSlope(p1, p2) {
         return (p2.y - p1.y) / (p2.x - p1.x);
     }
 
+    function pointToLineDistance(pd, p1, p2) {
+        /**
+         * pd is the point not on the line
+         * p1 and p2 are points that define the line.
+         * @type {number}
+         */
+            // ax + by + c  = 0
+            //
+        const a = p1.y - p2.y;
+        const b = p2.x - p1.x;
+        const c = (p1.x * p2.y) - (p2.x * p1.y);
+
+        return Math.abs((a * p.x + b * p.y + c)) / (Math.sqrt(a * a + b * b))
+    }
 
     function getDiscTangentPoints(p1, p2) {
         if (isVertical(p1, p2)) {
@@ -653,7 +768,7 @@ let dataCones = {
     ]
 };
 
-let cones = drawExampleViz("#vizCones", dataCones, error, height, width);
+let cones = drawExampleViz("#vizCones", dataCones, 25, height, width);
 cones.updateNodes(dataCones.nodes);
 cones.updateEdges(dataCones.edges);
 cones.drawGraph();
