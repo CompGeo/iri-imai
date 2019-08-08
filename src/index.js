@@ -98,6 +98,15 @@ function drawExampleViz(el, data, error, height, width) {
             if (!e.hasOwnProperty('epsilon')) {
                 e.epsilon = epsilon;
             }
+            if (!e.hasOwnProperty('shortestPath')){
+                e.shortestPath = false;
+            }
+        });
+    }
+
+    function resetShortestPath(){
+        data.edges.forEach(function (e) {
+            e.shortestPath = false;
         });
     }
 
@@ -144,17 +153,24 @@ function drawExampleViz(el, data, error, height, width) {
 
     }
 
+
     function gatherNeighbors(){
         /***
          * construct an adjacency list, prepare for a BFS
          */
+
+        //console.log('gathering neighbors');
+        //console.log('edges');
+        //console.log(data.edges);
         data.nodes.forEach(function(node, idx){
             let neighbors = [];
-            let edges = data.edges.filter(function(e){
-                return e.source === idx;
-            });
-            edges.forEach(function(i){
-                neighbors.push(i.target);
+
+            data.edges.forEach(function(e){
+                if (e.source === idx) {
+                    if (!e.approx || e.show) {
+                        neighbors.push(e.target);
+                    }
+                }
             });
             node.neighbors = neighbors;
             node.discovered = false;
@@ -166,10 +182,11 @@ function drawExampleViz(el, data, error, height, width) {
      * adapted from stack overflow: https://stackoverflow.com/questions/32527026/shortest-path-in-javascript
      * @constructor
      */
-    function BFS(){
-        // reset state
+    function bfs(){
+        // reset edge state
+        resetShortestPath();
         gatherNeighbors();
-
+        //console.log(data.nodes);
         const source = 0;
         const target = data.nodes.length - 1;
         const queue = [source];
@@ -207,8 +224,24 @@ function drawExampleViz(el, data, error, height, width) {
 
     }
 
+    function doShortestPath(){
+        let shortestPath = bfs();
+        //console.log(shortestPath);
+        let path = [];
+        for (let i = 0; i < shortestPath.length - 1; i++){
+            path.push({
+                source: shortestPath[i],
+                target: shortestPath[i + 1],
+                shortestPath: true
+            })
+        }
 
-    function generateApproxEdges() {
+        updateEdges(path);
+
+        drawGraph();
+    }
+
+    function generateAllApproxEdges() {
 
         const len = data.nodes.length;
         data.nodes.forEach(function (n, idx) {
@@ -224,11 +257,11 @@ function drawExampleViz(el, data, error, height, width) {
             }
         });
 
+        initializeFlags();
     }
 
-    generateApproxEdges();
 
-    initializeFlags();
+    generateAllApproxEdges();
 
 
     function getEdges() {
@@ -256,28 +289,32 @@ function drawExampleViz(el, data, error, height, width) {
                         return yScale(data.nodes[d.target].coordinates.y);
                     })
                     .style("stroke", function (d) {
-                        if (d.approx) {
+                        if (d.shortestPath){
+                            return "green";
+                        } else if (d.approx) {
                             return "blue";
                         } else {
                             return "#000000";
                         }
                     })
                     .style("stroke-dasharray", function (d) {
-                        if (d.approx) {
+                        if (d.approx && !d.shortestPath) {
                             return "2,2";
                         } else {
                             return "";
                         }
                     })
                     .style("stroke-width", function (d) {
-                        if (d.approx) {
+                        if (d.approx && !d.shortestPath) {
                             return "1";
                         } else {
                             return "2";
                         }
                     })
                     .attr("marker-end", function (d) {
-                        if (d.approx) {
+                        if (d.shortestPath){
+                            return "";
+                        } else if (d.approx) {
                             return "url(#bluearrow)";
                         } else {
                             return "url(#arrow)";
@@ -730,6 +767,54 @@ function drawExampleViz(el, data, error, height, width) {
         })
     }
 
+    function pruneIriImai(){
+        hideApprox();
+        drawGraph();
+        data.edges.forEach(function(edge, idx){
+            if (edge.approx){
+                // if the edge is an approximate one, do iri-imai error test, mark show = false if failed.
+                //console.log(edge);
+                // should be the number of nodes skipped
+                //console.log(edge.target - edge.source);
+                let keep_edge = false;
+                let num_skipped = edge.target - edge.source;
+                let srcNode = data.nodes[edge.source];
+                let tgtNode = data.nodes[edge.target];
+
+                for (let i=1; i < num_skipped; i++){
+                    //console.log('inner index');
+                    //console.log(i);
+                    // node skipped by edge
+                    let skipped_idx = i + edge.source;
+                    let node = data.nodes[skipped_idx];
+
+                    let d = pointToLineDistance(node.coordinates, srcNode.coordinates, tgtNode.coordinates);
+/*                    console.log('distance to edge');
+                    console.log('srcNode:' + edge.source);
+                    console.log('tgtNode:' + edge.target);
+                    console.log('skipped node:' + skipped_idx);
+                    console.log([d, edge.epsilon]);*/
+                    if (d > edge.epsilon){
+                        keep_edge = keep_edge && false;
+                        break;
+                    } else {
+                        keep_edge = true;
+                    }
+                }
+
+                if (keep_edge){
+                    edge.show = true;
+                } else {
+                    edge.show = false;
+                }
+
+            }
+
+        });
+
+        drawGraph();
+    }
+
     return {
         drawGraph: drawGraph,
         updateNodes: updateNodes,
@@ -737,7 +822,10 @@ function drawExampleViz(el, data, error, height, width) {
         updateError: updateError,
         showApproximation: showApprox,
         hideApproximation: hideApprox,
-        getShortestPath: BFS
+        getShortestPath: doShortestPath,
+        generateAllApproxEdges: generateAllApproxEdges,
+        pruneIriImai: pruneIriImai,
+        resetShortestPath: resetShortestPath
     }
 }
 
@@ -773,28 +861,85 @@ const width = 500;
 //viz 1
 let dataDag = cloneDeep(demoData);
 let dag = drawExampleViz("#vizDAG", dataDag, error, height, width);
-let dagShowEdges = false;
 dag.drawGraph();
 
-function toggleDAGedges1() {
-    dagShowEdges = !dagShowEdges;
-    if (dagShowEdges) {
-        dag.showApproximation();
+
+let DAGSteps = [
+    {
+        'step': 0,
+        'message': 'Model the polygonal chain as a directed acyclic graph (DAG).',
+        'action': dag.hideApproximation
+    },
+    {
+        'step': 1,
+        'message': 'Examine all possible edges (in blue) from each vertex in the chain. Notice that potential edges will skip some number of vertices.',
+        'action': dag.showApproximation
+    },
+    {
+        'step': 2,
+        'message': 'Remove any potential edges that are too far away (greater than \u03B5) from any of the vertices that they skip. This example uses the perpendicular distance from a skipped point to a potential edge as a measure of error.',
+        'action': dag.pruneIriImai
+    },
+    {
+        'step': 3,
+        'message': 'Calculate the shortest path using the remaining edges. This example uses a breadth first search to find the shortest path. The result (in green) is the simplified polygonal chain that minimizes the number of edges.',
+        'action': dag.getShortestPath
+    }
+];
+
+
+let DAGStepsIndex = 0;
+
+function showStep(idx){
+    dag.resetShortestPath();
+    let dagText = document.getElementById("message-dag-1");
+    let step = DAGSteps[idx];
+    dagText.textContent = step.message;
+    step.action.call();
+
+    if (idx <= 0){
+        document.getElementById("backwardDAGedges1").disabled = true;
     } else {
-        dag.hideApproximation();
+        document.getElementById("backwardDAGedges1").disabled = false;
+    }
+    if (idx >= DAGSteps.length - 1){
+        document.getElementById("forwardDAGedges1").disabled = true;
+    } else {
+        document.getElementById("forwardDAGedges1").disabled = false;
     }
     dag.drawGraph();
 }
 
 document.addEventListener('click', function (e) {
-    if (e.target && e.target.id === 'toggleDAGedges1') {
-        toggleDAGedges1();
+    if (e.target && e.target.id === 'forwardDAGedges1') {
+        DAGStepsIndex += 1;
+        let numSteps = DAGSteps.length;
+        if (DAGStepsIndex >= numSteps - 1){
+            DAGStepsIndex = numSteps - 1;
+        } else if (DAGStepsIndex < 0){
+            DAGStepsIndex = 0;
+        }
+        showStep(DAGStepsIndex);
     }
 });
 
-let sp = dag.getShortestPath();
-console.log('shortest path');
-console.log(sp);
+
+document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'backwardDAGedges1') {
+        DAGStepsIndex -= 1;
+        let numSteps = DAGSteps.length;
+        if (DAGStepsIndex >= numSteps - 1){
+            DAGStepsIndex = numSteps -1;
+        } else if (DAGStepsIndex < 0){
+            DAGStepsIndex = 0;
+        }
+
+        showStep(DAGStepsIndex);
+    }
+});
+
+showStep(DAGStepsIndex);
+
 
 // viz 2
 let dataStrip = cloneDeep(demoData);
