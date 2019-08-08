@@ -24,7 +24,7 @@
     </div>
 </nav>
 <main>
-    <div id="intro" class="container">
+    <div id="intro" class="container" style="padding-top: 1em; padding-bottom: 1em">
         <h3>Introduction</h3>
         <div class="section-content">
             <p>
@@ -65,7 +65,7 @@
         </div>
     </div>
 
-    <div id="formulations" class="container">
+    <div id="formulations" class="container" style="padding-top: 1em; padding-bottom: 1em">
         <h4>An aside about min-# vs. min-&epsilon;</h4>
         <div class="section-content">
             There are two general formulations of this problem.
@@ -81,30 +81,50 @@
         </div>
     </div>
 
-    <div id="iri_imai" class="container">
+    <div id="iri_imai" class="container" style="padding-top: 1em; padding-bottom: 1em">
         <h3>The Iri-Imai Algorithm for min-#</h3>
         <div class="section-content">
             <p>
                 Some text describing the algorithm.
             </p>
-            <div id="vizDAG">
-                <div>
-                <div class="controls">
-                    <button class="btn btn-outline-primary" id="backwardDAGedges1">previous step
-                    </button>
-                    <button class="btn btn-outline-primary" id="forwardDAGedges1">next step
-                    </button>
+            <div class="row">
+                <div id="vizDAG" class="col-6">
+
                 </div>
-                <div id="message-dag-1">
+                <div class="col-6">
+                    <div class="card">
+                        <div class="card-body">
+
+                        <div class="card-title">
+                            <h5>This visualization illustrates the main steps involved in the Iri-Imai algorithm, at a high level.
+                                Use the controls below to step through.</h5>
+                        </div>
+                            <div class="card-text">
+                                <div class="controls" style="padding: 1em;">
+                                    <button class="btn btn-outline-primary" id="backwardDAGedges1">previous step
+                                    </button>
+                                    <button class="btn btn-outline-primary" id="forwardDAGedges1">next step
+                                    </button>
+                                </div>
+
+                            </div>
+                            <div class="card-footer">
+                                <div id="message-dag-1" style="padding: 1em;">
+                                </div>
+                            </div>
+                        <div>
+
+                        </div>
+                    </div>
+                    </div>
                 </div>
-                </div>
+
+
+
             </div>
-            <p>
-                Some text about how edges are determined.
-            </p>
         </div>
     </div>
-    <div id="parallel_strip" class="container">
+    <div id="parallel_strip" class="container" style="padding-top: 1em; padding-bottom: 1em">
         <h3>
             The "Parallel Strip" criterion
         </h3>
@@ -125,20 +145,42 @@
                 original line.
                 include a visualization of the parallel strip and a disc.
             </p>
-            <div id="vizStrip">
-                <form>
-                    <div class="form-group">
-                        <label for="epsilonRange_strip">Vary &epsilon; to see the interaction between a disc and the
-                            parallel strip. &epsilon; = <span id="strip-epsilon">0</span></label>
-                        <input type="range" class="form-control-range" min="0" max="40" id="epsilonRange_strip"
-                               style="width:50%;">
+            <div class="row">
+
+                <div id="vizStrip" class="col-6"></div>
+                <div class="col-6">
+                    <div class="card">
+                        <div class="card-body">
+
+                            <div class="card-title">
+                                <h5>Vary &epsilon; to see the interaction between a disc and the
+                                    parallel strip.</h5>
+                            </div>
+                            <div class="card-text">
+                                <form>
+                                    <div class="form-group">
+                                        <input type="range" class="form-control-range" min="0" max="40" id="epsilonRange_strip"
+                                               style="width:50%;">
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="card-footer">
+                                &epsilon; = <span id="strip-epsilon">0</span>
+                            </div>
+                            <div>
+
+                            </div>
+                        </div>
                     </div>
-                </form>
+
+                </div>
+
+
             </div>
         </div>
     </div>
 
-    <div id="double_cone" class="container">
+    <div id="double_cone" class="container" style="padding-top: 1em; padding-bottom: 1em">
         <h3>
             Using Discs and Double cones to construct G
         </h3>
@@ -147,12 +189,41 @@
                 some text about how intersections of double cones formed using the discs can be used to construct G.
                 include a visualization of the double cone intersection, animation.
             </p>
-            <div id="vizCones">
+
+            <div class="row">
+
+                <div id="vizCones" class="col-6"></div>
+                <div class="col-6">
+                    <div class="card">
+                        <div class="card-body">
+
+                            <div class="card-title">
+                                <h5>This visualization illustrates how error discs and double cones can be used to construct G.</h5>
+                            </div>
+                            <div class="card-text">
+                                <div class="controls" style="padding: 1em;">
+                                    <button class="btn btn-outline-primary" id="backwardConeedges1">previous step
+                                    </button>
+                                    <button class="btn btn-outline-primary" id="forwardConeedges1">next step
+                                    </button>
+                                </div>
+
+                            </div>
+                            <div class="card-footer">
+                                <div id="message-cone-1" style="padding: 1em;">
+                                </div>
+                            </div>
+                            <div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="demo_start" class="container">
+    <div id="demo_start" class="container" style="padding-top: 1em; padding-bottom: 1em">
         <h3>An Interactive Demo of the full algorithm.</h3>
         <div class="section-content">
             <p>
@@ -162,7 +233,7 @@
         </div>
     </div>
 
-    <div id="extensions" class="container">
+    <div id="extensions" class="container" style="padding-top: 1em; padding-bottom: 1em">
         <h3>
             The Closed Curve case
         </h3>
@@ -174,7 +245,7 @@
             </p>
         </div>
     </div>
-    <div id="resources" class="container">
+    <div id="resources" class="container" style="padding-top: 1em; padding-bottom: 1em">
         <h2>Resources</h2>
         <div class="section-content">
             <h5>
