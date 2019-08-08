@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import './styles/main.scss';
 import cloneDeep from 'lodash/cloneDeep';
 import {ShapeInfo, Intersection} from "kld-intersections";
+import "@babel/polyfill";
 
 
 function drawExampleViz(el, data, error, height, width) {
@@ -890,7 +891,7 @@ let DAGSteps = [
 
 let DAGStepsIndex = 0;
 
-function showStep(idx){
+async function showDAGStep(idx){
     dag.resetShortestPath();
     let dagText = document.getElementById("message-dag-1");
     let step = DAGSteps[idx];
@@ -899,15 +900,49 @@ function showStep(idx){
 
     if (idx <= 0){
         document.getElementById("backwardDAGedges1").disabled = true;
+        document.getElementById("rewindDAGedges1").disabled = true;
+
     } else {
-        document.getElementById("backwardDAGedges1").disabled = false;
+        if (!DAGControlsDisabled) {
+            document.getElementById("backwardDAGedges1").disabled = false;
+            document.getElementById("rewindDAGedges1").disabled = false;
+        }
+
     }
     if (idx >= DAGSteps.length - 1){
         document.getElementById("forwardDAGedges1").disabled = true;
+        document.getElementById("ffDAGedges1").disabled = true;
+
     } else {
-        document.getElementById("forwardDAGedges1").disabled = false;
+        if (!DAGControlsDisabled){
+            document.getElementById("forwardDAGedges1").disabled = false;
+            document.getElementById("ffDAGedges1").disabled = false;
+        }
+
     }
     dag.drawGraph();
+    await sleep(2500);
+}
+
+let DAGControlsDisabled = false;
+function disableDAGControls(){
+    DAGControlsDisabled = true;
+    document.getElementById("backwardDAGedges1").disabled = true;
+    document.getElementById("rewindDAGedges1").disabled = true;
+    document.getElementById("forwardDAGedges1").disabled = true;
+    document.getElementById("ffDAGedges1").disabled = true;
+}
+
+function enableDAGControls(){
+    DAGControlsDisabled = false;
+    document.getElementById("backwardDAGedges1").disabled = false;
+    document.getElementById("rewindDAGedges1").disabled = false;
+    document.getElementById("forwardDAGedges1").disabled = false;
+    document.getElementById("ffDAGedges1").disabled = false;
+}
+
+function sleep (time) {
+    return new Promise((resolve) => setTimeout(resolve, time));
 }
 
 document.addEventListener('click', function (e) {
@@ -919,12 +954,8 @@ document.addEventListener('click', function (e) {
         } else if (DAGStepsIndex < 0){
             DAGStepsIndex = 0;
         }
-        showStep(DAGStepsIndex);
+        showDAGStep(DAGStepsIndex);
     }
-});
-
-
-document.addEventListener('click', function (e) {
     if (e.target && e.target.id === 'backwardDAGedges1') {
         DAGStepsIndex -= 1;
         let numSteps = DAGSteps.length;
@@ -934,11 +965,44 @@ document.addEventListener('click', function (e) {
             DAGStepsIndex = 0;
         }
 
-        showStep(DAGStepsIndex);
+        showDAGStep(DAGStepsIndex);
+    }
+    if (e.target && e.target.id === 'rewindDAGedges1') {
+
+            while (DAGStepsIndex > 0){
+                DAGStepsIndex -= 1;
+                showDAGStep(DAGStepsIndex)
+            }
+
+    }
+    if (e.target && e.target.id === 'ffDAGedges1') {
+        DAGStepsIndex += 1;
+        let numSteps = DAGSteps.length;
+        if (DAGStepsIndex < numSteps){
+            disableDAGControls();
+            showDAGStep(DAGStepsIndex).then(function(){
+                if (DAGStepsIndex < numSteps){
+                    DAGStepsIndex += 1;
+                    showDAGStep(DAGStepsIndex).then(function(){
+                        if (DAGStepsIndex < numSteps){
+                            DAGStepsIndex += 1;
+                            showDAGStep(DAGStepsIndex);
+                        }
+                        enableDAGControls();
+                    })
+                } else {
+                    enableDAGControls();
+                }
+            });
+        } else {
+            DAGStepsIndex = numSteps -1;
+        }
+
     }
 });
 
-showStep(DAGStepsIndex);
+
+showDAGStep(DAGStepsIndex);
 
 
 // viz 2
