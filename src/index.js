@@ -40,7 +40,7 @@ function drawExampleViz(el, data, error, height, width) {
     defs.append("svg:marker")
         .attr('id', 'bluearrow')
         .attr('viewBox', '-0 -5 10 10')
-        .attr('refX', 30)
+        .attr('refX', 50)
         .attr('refY', 0)
         .attr('orient', 'auto')
         .attr('markerWidth', 5)
@@ -116,6 +116,7 @@ function drawExampleViz(el, data, error, height, width) {
     }
 
     function updateNodes(nodelist) {
+        // doesn't add nodes
         data.nodes.forEach(function (n, idx, arr) {
             nodelist.forEach(function (u) {
                 let nc = n.coordinates;
@@ -129,6 +130,7 @@ function drawExampleViz(el, data, error, height, width) {
     }
 
     function updateEdges(edgelist) {
+        // doesn't add edges
         data.edges.forEach(function (n, idx, arr) {
             edgelist.forEach(function (u) {
                 if (u.source === n.source && u.target === n.target) {
@@ -142,6 +144,69 @@ function drawExampleViz(el, data, error, height, width) {
 
     }
 
+    function gatherNeighbors(){
+        /***
+         * construct an adjacency list, prepare for a BFS
+         */
+        data.nodes.forEach(function(node, idx){
+            let neighbors = [];
+            let edges = data.edges.filter(function(e){
+                return e.source === idx;
+            });
+            edges.forEach(function(i){
+                neighbors.push(i.target);
+            });
+            node.neighbors = neighbors;
+            node.discovered = false;
+        });
+
+    }
+
+    /***
+     * adapted from stack overflow: https://stackoverflow.com/questions/32527026/shortest-path-in-javascript
+     * @constructor
+     */
+    function BFS(){
+        // reset state
+        gatherNeighbors();
+
+        const source = 0;
+        const target = data.nodes.length - 1;
+        const queue = [source];
+
+        let shortestPath = [];
+        data.nodes[0].discovered = true;
+        data.nodes[0].predecessor = {};
+        let tail = 0;
+
+        while (tail < queue.length){
+            let u = queue[tail++];
+            let neighbors = data.nodes[u].neighbors;
+            neighbors.forEach(function(n){
+                if (data.nodes[n].discovered){
+                    return;
+                }
+                data.nodes[n].discovered = true;
+                if (n === target){
+                    let path = [n];
+                    while (u !== source){
+                        path.push(u);
+                        u = data.nodes[u].predecessor;
+                    }
+                    path.push(u);
+                    path.reverse();
+                    shortestPath = path;
+                    return;
+                }
+                data.nodes[n].predecessor = u;
+                queue.push(n);
+            })
+        }
+
+        return shortestPath;
+
+    }
+
 
     function generateApproxEdges() {
 
@@ -149,7 +214,12 @@ function drawExampleViz(el, data, error, height, width) {
         data.nodes.forEach(function (n, idx) {
             for (let i = 0; i < len; i++) {
                 if (i > idx) {
-                    data.edges.push({'source': idx, 'target': i, 'approx': true});
+                    let matches = data.edges.filter(function(e){
+                        return e.source === idx && e.target === i;
+                    });
+                    if (matches.length === 0) {
+                        data.edges.push({'source': idx, 'target': i, 'approx': true});
+                    }
                 }
             }
         });
@@ -377,42 +447,44 @@ function drawExampleViz(el, data, error, height, width) {
                             doubleCone = false;
                         }
 
+                        let polyline = '';
                         if (!doubleCone) {
                             // open cone == the whole plane
-                            let openCone = xScale(xmin) + ' ' + yScale(ymin) + ', ' + xScale(xmin) + ' ' + yScale(ymax);
-                            openCone += ', ' + xScale(xmax) + ' ' + yScale(ymax) + ', ' + xScale(xmax) + ' ';
-                            openCone += yScale(ymin) + ', ' + xScale(xmin) + ' ' + yScale(ymin);
-                            return openCone;
+                            polyline = xScale(xmin) + ' ' + yScale(ymin) + ', ' + xScale(xmin) + ' ' + yScale(ymax);
+                            polyline += ', ' + xScale(xmax) + ' ' + yScale(ymax) + ', ' + xScale(xmax) + ' ';
+                            polyline += yScale(ymin) + ', ' + xScale(xmin) + ' ' + yScale(ymin);
+                        } else {
+                            let pe1 = getExtremePointsForLine(p1, points[0]);
+                            let pe2 = getExtremePointsForLine(p1, points[1]);
+
+
+                            let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
+                            let forward = [];
+                            let backward = [];
+                            // gather segments on each side of p1 to construct cones as polylines
+                            ex_points.forEach(function (p) {
+                                if (pointIsOn(p1, p, points[0]) || pointIsOn(p1, p, points[1])) {
+
+                                    forward.push(p);
+                                } else {
+                                    backward.push(p);
+                                }
+                            });
+
+                            // need to maintain clockwise order, pair up points properly
+                            polyline = xScale(p1.x) + ' ' + yScale(p1.y) + ', ' + xScale(forward[0].x) + ' ' + yScale(forward[0].y) + ', ';
+                            polyline += xScale(forward[1].x) + ' ' + yScale(forward[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
+                            polyline += ', ' + xScale(backward[0].x) + ' ' + yScale(backward[0].y) + ', ';
+                            polyline += xScale(backward[1].x) + ' ' + yScale(backward[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
                         }
-                        let pe1 = getExtremePointsForLine(p1, points[0]);
-                        let pe2 = getExtremePointsForLine(p1, points[1]);
-
-
-                        let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
-                        let forward = [];
-                        let backward = [];
-                        // gather segments on each side of p1 to construct cones as polylines
-                        ex_points.forEach(function (p) {
-                            if (pointIsOn(p1, p, points[0]) || pointIsOn(p1, p, points[1])) {
-
-                                forward.push(p);
-                            } else {
-                                backward.push(p);
-                            }
-                        });
-
-                        // need to maintain clockwise order, pair up points properly
-                        let trianglePoints = xScale(p1.x) + ' ' + yScale(p1.y) + ', ' + xScale(forward[0].x) + ' ' + yScale(forward[0].y) + ', ';
-                        trianglePoints += xScale(forward[1].x) + ' ' + yScale(forward[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
-                        trianglePoints += ', ' + xScale(backward[0].x) + ' ' + yScale(backward[0].y) + ', ';
-                        trianglePoints += xScale(backward[1].x) + ' ' + yScale(backward[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
-                        console.log(trianglePoints);
-                        return trianglePoints;
+                        //console.log(trianglePoints);
+                        // todo: calculate what node points intersect the polyline. union with previous intersection.
+                        return polyline;
                     })
-                    .style('stroke', 'blue')
-                    .style('stroke-width', "1")
-                    .style('stroke-opacity', '1')
-                    .style('fill', 'blue')
+                    .style('stroke', 'black')
+                    .style('stroke-width', "2")
+                    .style('stroke-opacity', '100')
+                    .style('fill', '#0000FF')
                     .style('opacity', '0.2'),
                 update => update
                     .call(update => update.transition(t)
@@ -664,7 +736,8 @@ function drawExampleViz(el, data, error, height, width) {
         updateEdges: updateEdges,
         updateError: updateError,
         showApproximation: showApprox,
-        hideApproximation: hideApprox
+        hideApproximation: hideApprox,
+        getShortestPath: BFS
     }
 }
 
@@ -719,6 +792,10 @@ document.addEventListener('click', function (e) {
     }
 });
 
+let sp = dag.getShortestPath();
+console.log('shortest path');
+console.log(sp);
+
 // viz 2
 let dataStrip = cloneDeep(demoData);
 
@@ -755,14 +832,13 @@ let updateCones = {
     "nodes": [
         {"coordinates": {"x": 20, "y": 55}, "disc": true},
         {"coordinates": {"x": 19, "y": 37}, "disc": true},
-        {"coordinates": {"x": 25, "y": 41, "disc": true}}
+        {"coordinates": {"x": 25, "y": 41}, "disc": true}
 
     ],
     "edges": [
         {"source": 0, "target": 1, "strip": false, "cone": true},
         {"source": 0, "target": 2, "approx": true, "show": true, "strip": false, "cone": true},
         {"source": 0, "target": 3, "approx": true, "show": true, "strip": false, "cone": true},
-
         {"source": 1, "target": 2, "strip": false, "cone": false},
         {"source": 2, "target": 3, "strip": false, "cone": false},
         {"source": 3, "target": 4, "strip": false, "cone": false},
@@ -772,6 +848,7 @@ let updateCones = {
         {"source": 7, "target": 8, "strip": false, "cone": false}
     ]
 };
+
 
 // test cones
 
