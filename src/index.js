@@ -1104,17 +1104,38 @@ let coneSteps = [
     }
 ];
 
+function getNextConeStep(){
+    /* for now just return step associated with index */
+    coneStepsIndex += 1;
+    let numSteps = coneSteps.length;
+    if (coneStepsIndex >= numSteps - 1){
+        coneStepsIndex = numSteps - 1;
+    } else if (coneStepsIndex < 0){
+        coneStepsIndex = 0;
+    }
+
+    return coneSteps[coneStepsIndex];
+}
+
+function getPrevConeStep(){
+    /* for now just return step associated with index */
+    coneStepsIndex -= 1;
+    let numSteps = coneSteps.length;
+    if (coneStepsIndex >= numSteps - 1){
+        coneStepsIndex = numSteps -1;
+    } else if (coneStepsIndex < 0){
+        coneStepsIndex = 0;
+    }
+
+    return coneSteps[coneStepsIndex];
+}
+
 
 let coneStepsIndex = 0;
 
-async function showConeStep(idx){
-    cones.resetShortestPath();
-    let elText = document.getElementById("message-cone-1");
-    let step = coneSteps[idx];
-    elText.textContent = step.message;
-    step.action.call();
+function handleConeControlVisibility(){
 
-    if (idx <= 0){
+    if (coneStepsIndex <= 0){
         document.getElementById("backwardConeedges1").disabled = true;
         document.getElementById("rewindConeedges1").disabled = true;
 
@@ -1125,7 +1146,7 @@ async function showConeStep(idx){
         }
 
     }
-    if (idx >= coneSteps.length - 1){
+    if (coneStepsIndex >= coneSteps.length - 1){
         document.getElementById("forwardConeedges1").disabled = true;
         document.getElementById("ffConeedges1").disabled = true;
 
@@ -1136,8 +1157,45 @@ async function showConeStep(idx){
         }
 
     }
+}
+
+
+function showFirstConeStep(){
+    cones.resetShortestPath();
+    let elText = document.getElementById("message-cone-1");
+    let step = coneSteps[0];
+    elText.textContent = step.message;
+    step.action.call();
+
+    handleConeControlVisibility();
+
+    cones.drawGraph();
+}
+
+async function showNextConeStep(){
+    cones.resetShortestPath();
+    let elText = document.getElementById("message-cone-1");
+    let step = getNextConeStep();
+    elText.textContent = step.message;
+    step.action.call();
+
+    handleConeControlVisibility();
+
     cones.drawGraph();
     await sleep(2500);
+}
+
+async function showPrevConeStep(){
+    cones.resetShortestPath();
+    let elText = document.getElementById("message-cone-1");
+    let step = getPrevConeStep();
+    elText.textContent = step.message;
+    step.action.call();
+
+    handleConeControlVisibility();
+
+    cones.drawGraph();
+    await sleep(0);
 }
 
 let coneControlsDisabled = false;
@@ -1218,31 +1276,16 @@ document.addEventListener('click', function (e) {
      */
 
     if (e.target && e.target.id === 'forwardConeedges1') {
-        coneStepsIndex += 1;
-        let numSteps = coneSteps.length;
-        if (coneStepsIndex >= numSteps - 1){
-            coneStepsIndex = numSteps - 1;
-        } else if (coneStepsIndex < 0){
-            coneStepsIndex = 0;
-        }
-        showConeStep(coneStepsIndex);
+
+        showNextConeStep();
     }
     if (e.target && e.target.id === 'backwardConeedges1') {
-        coneStepsIndex -= 1;
-        let numSteps = coneSteps.length;
-        if (coneStepsIndex >= numSteps - 1){
-            coneStepsIndex = numSteps -1;
-        } else if (coneStepsIndex < 0){
-            coneStepsIndex = 0;
-        }
-
-        showConeStep(coneStepsIndex);
+        showPrevConeStep();
     }
     if (e.target && e.target.id === 'rewindConeedges1') {
 
         while (coneStepsIndex > 0){
-            coneStepsIndex -= 1;
-            showConeStep(coneStepsIndex)
+            showPrevConeStep();
         }
 
     }
@@ -1251,13 +1294,11 @@ document.addEventListener('click', function (e) {
         let numSteps = coneSteps.length;
         if (coneStepsIndex < numSteps){
             disableConeControls();
-            showConeStep(coneStepsIndex).then(function(){
+            showNextConeStep().then(function(){
                 if (coneStepsIndex < numSteps){
-                    coneStepsIndex += 1;
-                    showConeStep(coneStepsIndex).then(function(){
+                    showNextConeStep(coneStepsIndex).then(function(){
                         if (coneStepsIndex < numSteps){
-                            coneStepsIndex += 1;
-                            showConeStep(coneStepsIndex);
+                            showNextConeStep(coneStepsIndex);
                         }
                         enableConeControls();
                     })
@@ -1273,7 +1314,7 @@ document.addEventListener('click', function (e) {
 });
 
 
-showConeStep(coneStepsIndex);
+showFirstConeStep();
 
 
 
