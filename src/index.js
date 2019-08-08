@@ -816,6 +816,30 @@ function drawExampleViz(el, data, error, height, width) {
         drawGraph();
     }
 
+    function drawDiscsFromSource(srcIdx) {
+        data.nodes.forEach(function (n, idx) {
+            if (idx > srcIdx) {
+                n.disc = true;
+            } else {
+                n.disc = false;
+            }
+        });
+    }
+
+    function clearCones() {
+        data.edges.forEach(function (e, idx) {
+            e.cone = false;
+        });
+    }
+
+    function drawConeFromSource(srcIdx, tgtIdx) {
+        data.edges.forEach(function (e, idx) {
+            if (e.source === srcIdx && e.target === tgtIdx){
+                e.cone = true;
+            }
+        });
+    }
+
     return {
         drawGraph: drawGraph,
         updateNodes: updateNodes,
@@ -826,7 +850,10 @@ function drawExampleViz(el, data, error, height, width) {
         getShortestPath: doShortestPath,
         generateAllApproxEdges: generateAllApproxEdges,
         pruneIriImai: pruneIriImai,
-        resetShortestPath: resetShortestPath
+        resetShortestPath: resetShortestPath,
+        drawDiscsFromSource: drawDiscsFromSource,
+        clearCones: clearCones,
+        drawConeFromSource: drawConeFromSource
     }
 }
 
@@ -945,7 +972,7 @@ function sleep (time) {
     return new Promise((resolve) => setTimeout(resolve, time));
 }
 
-document.addEventListener('click', function (e) {
+/*document.addEventListener('click', function (e) {
     if (e.target && e.target.id === 'forwardDAGedges1') {
         DAGStepsIndex += 1;
         let numSteps = DAGSteps.length;
@@ -999,7 +1026,7 @@ document.addEventListener('click', function (e) {
         }
 
     }
-});
+});*/
 
 
 showDAGStep(DAGStepsIndex);
@@ -1037,40 +1064,219 @@ striprange.addEventListener('input', updateStrips);
 
 
 let dataCones = cloneDeep(demoData);
-let updateCones = {
-    "nodes": [
-        {"coordinates": {"x": 20, "y": 55}, "disc": true},
-        {"coordinates": {"x": 19, "y": 37}, "disc": true},
-        {"coordinates": {"x": 25, "y": 41}, "disc": true}
-
-    ],
-    "edges": [
-        {"source": 0, "target": 1, "strip": false, "cone": true},
-        {"source": 0, "target": 2, "approx": true, "show": true, "strip": false, "cone": true},
-        {"source": 0, "target": 3, "approx": true, "show": true, "strip": false, "cone": true},
-        {"source": 1, "target": 2, "strip": false, "cone": false},
-        {"source": 2, "target": 3, "strip": false, "cone": false},
-        {"source": 3, "target": 4, "strip": false, "cone": false},
-        {"source": 4, "target": 5, "strip": false, "cone": false},
-        {"source": 5, "target": 6, "strip": false, "cone": false},
-        {"source": 6, "target": 7, "strip": false, "cone": false},
-        {"source": 7, "target": 8, "strip": false, "cone": false}
-    ]
-};
 
 
 // test cones
 
 
-dataCones.nodes.forEach(function (n) {
-    n.disc = true;
+let cones = drawExampleViz("#vizCones", dataCones, 25, height, width);
+cones.drawDiscsFromSource(0);
+
+cones.drawGraph();
+
+let coneSteps = [
+    {
+        'step': 0,
+        'message': 'Draw a double cone from the starting vertex that is defined by the tangent line from the vertex to error disc of the target vertex.',
+        'action': function(){
+            cones.clearCones();
+            cones.drawConeFromSource(0, 1);
+        }
+    },
+    {
+        'step': 1,
+        'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
+        'action': function(){
+            cones.clearCones();
+            cones.drawConeFromSource(0, 1);
+            cones.drawConeFromSource(0, 2);
+        }
+    },
+    {
+        'step': 2,
+        'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
+        'action': function(){
+            cones.clearCones();
+            cones.drawConeFromSource(0, 1);
+            cones.drawConeFromSource(0, 2);
+            cones.drawConeFromSource(0, 3);
+        }
+    }
+];
+
+
+let coneStepsIndex = 0;
+
+async function showConeStep(idx){
+    cones.resetShortestPath();
+    let elText = document.getElementById("message-cone-1");
+    let step = coneSteps[idx];
+    elText.textContent = step.message;
+    step.action.call();
+
+    if (idx <= 0){
+        document.getElementById("backwardConeedges1").disabled = true;
+        document.getElementById("rewindConeedges1").disabled = true;
+
+    } else {
+        if (!coneControlsDisabled) {
+            document.getElementById("backwardConeedges1").disabled = false;
+            document.getElementById("rewindConeedges1").disabled = false;
+        }
+
+    }
+    if (idx >= coneSteps.length - 1){
+        document.getElementById("forwardConeedges1").disabled = true;
+        document.getElementById("ffConeedges1").disabled = true;
+
+    } else {
+        if (!coneControlsDisabled){
+            document.getElementById("forwardConeedges1").disabled = false;
+            document.getElementById("ffConeedges1").disabled = false;
+        }
+
+    }
+    cones.drawGraph();
+    await sleep(2500);
+}
+
+let coneControlsDisabled = false;
+function disableConeControls(){
+    coneControlsDisabled = true;
+    document.getElementById("backwardConeedges1").disabled = true;
+    document.getElementById("rewindConeedges1").disabled = true;
+    document.getElementById("forwardConeedges1").disabled = true;
+    document.getElementById("ffConeedges1").disabled = true;
+}
+
+function enableConeControls(){
+    coneControlsDisabled = false;
+    document.getElementById("backwardConeedges1").disabled = false;
+    document.getElementById("rewindConeedges1").disabled = false;
+    document.getElementById("forwardConeedges1").disabled = false;
+    document.getElementById("ffConeedges1").disabled = false;
+}
+
+
+document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'forwardDAGedges1') {
+        DAGStepsIndex += 1;
+        let numSteps = DAGSteps.length;
+        if (DAGStepsIndex >= numSteps - 1){
+            DAGStepsIndex = numSteps - 1;
+        } else if (DAGStepsIndex < 0){
+            DAGStepsIndex = 0;
+        }
+        showDAGStep(DAGStepsIndex);
+    }
+    if (e.target && e.target.id === 'backwardDAGedges1') {
+        DAGStepsIndex -= 1;
+        let numSteps = DAGSteps.length;
+        if (DAGStepsIndex >= numSteps - 1){
+            DAGStepsIndex = numSteps -1;
+        } else if (DAGStepsIndex < 0){
+            DAGStepsIndex = 0;
+        }
+
+        showDAGStep(DAGStepsIndex);
+    }
+    if (e.target && e.target.id === 'rewindDAGedges1') {
+
+        while (DAGStepsIndex > 0){
+            DAGStepsIndex -= 1;
+            showDAGStep(DAGStepsIndex)
+        }
+
+    }
+    if (e.target && e.target.id === 'ffDAGedges1') {
+        DAGStepsIndex += 1;
+        let numSteps = DAGSteps.length;
+        if (DAGStepsIndex < numSteps){
+            disableDAGControls();
+            showDAGStep(DAGStepsIndex).then(function(){
+                if (DAGStepsIndex < numSteps){
+                    DAGStepsIndex += 1;
+                    showDAGStep(DAGStepsIndex).then(function(){
+                        if (DAGStepsIndex < numSteps){
+                            DAGStepsIndex += 1;
+                            showDAGStep(DAGStepsIndex);
+                        }
+                        enableDAGControls();
+                    })
+                } else {
+                    enableDAGControls();
+                }
+            });
+        } else {
+            DAGStepsIndex = numSteps -1;
+        }
+
+    }
+
+    /*
+    for cone viz
+     */
+
+    if (e.target && e.target.id === 'forwardConeedges1') {
+        coneStepsIndex += 1;
+        let numSteps = coneSteps.length;
+        if (coneStepsIndex >= numSteps - 1){
+            coneStepsIndex = numSteps - 1;
+        } else if (coneStepsIndex < 0){
+            coneStepsIndex = 0;
+        }
+        showConeStep(coneStepsIndex);
+    }
+    if (e.target && e.target.id === 'backwardConeedges1') {
+        coneStepsIndex -= 1;
+        let numSteps = coneSteps.length;
+        if (coneStepsIndex >= numSteps - 1){
+            coneStepsIndex = numSteps -1;
+        } else if (coneStepsIndex < 0){
+            coneStepsIndex = 0;
+        }
+
+        showConeStep(coneStepsIndex);
+    }
+    if (e.target && e.target.id === 'rewindConeedges1') {
+
+        while (coneStepsIndex > 0){
+            coneStepsIndex -= 1;
+            showConeStep(coneStepsIndex)
+        }
+
+    }
+    if (e.target && e.target.id === 'ffConeedges1') {
+        coneStepsIndex += 1;
+        let numSteps = coneSteps.length;
+        if (coneStepsIndex < numSteps){
+            disableConeControls();
+            showConeStep(coneStepsIndex).then(function(){
+                if (coneStepsIndex < numSteps){
+                    coneStepsIndex += 1;
+                    showConeStep(coneStepsIndex).then(function(){
+                        if (coneStepsIndex < numSteps){
+                            coneStepsIndex += 1;
+                            showConeStep(coneStepsIndex);
+                        }
+                        enableConeControls();
+                    })
+                } else {
+                    enableConeControls();
+                }
+            });
+        } else {
+            coneStepsIndex = numSteps -1;
+        }
+
+    }
 });
 
-let cones = drawExampleViz("#vizCones", dataCones, 25, height, width);
-cones.updateNodes(updateCones.nodes);
-cones.updateEdges(updateCones.edges);
-cones.drawGraph();
-//drawDiscsCones();
+
+showConeStep(coneStepsIndex);
+
+
+
 
 let demo = drawExampleViz("#vizDemo", cloneDeep(demoData), error, 750, 1000);
 demo.drawGraph();
