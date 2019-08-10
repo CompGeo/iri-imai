@@ -320,19 +320,12 @@ function drawExampleViz(el, data, error, height, width) {
                         } else {
                             return "url(#arrow)";
                         }
-                    })
-                    .call(enter => enter.transition(t)
-                        .attr("y", 0)),
+                    }),
                 update => update
-                    .attr("marker-end", "url(#arrow)")
-                    .attr("y", 0)
-                    .call(update => update.transition(t)
-                        .attr("x", (d, i) => i * 16)),
+                    .attr("marker-end", "url(#arrow)"),
                 exit => exit
                     .attr("fill", "brown")
-                    .call(exit => exit.transition(t)
-                        .attr("y", 30)
-                        .remove())
+                    .call(exit => exit.remove())
             );
 
 
@@ -373,20 +366,14 @@ function drawExampleViz(el, data, error, height, width) {
                     })
                     .style("fill", "url(#lightstripe)")
                     .style("stroke", "#000")
-                    .style("strokewidth", "1")
-                    .call(enter => enter.transition(t)
-                        .attr("y", 0)),
+                    .style("strokewidth", "1"),
                 update => update
                     .attr("r", function (d) {
                         return d.disc ? d.epsilon : 0;
-                    })
-                    .call(update => update.transition(t)
-                        .attr("x", (d, i) => i * 16)),
+                    }),
                 exit => exit
                     .attr("fill", "brown")
-                    .call(exit => exit.transition(t)
-                        .attr("y", 30)
-                        .remove())
+                    .call(exit => exit.remove())
             );
 
 
@@ -454,14 +441,10 @@ function drawExampleViz(el, data, error, height, width) {
                         } else {
                             return 1;
                         }
-                    })
-                    .call(update => update.transition(t)
-                        .attr("x", (d, i) => i * 16)),
+                    }),
                 exit => exit
                     .attr("fill", "brown")
-                    .call(exit => exit.transition(t)
-                        .attr("y", 30)
-                        .remove())
+                    .call(exit => exit.remove())
             );
 
         let coneData = data.edges.filter(function (i) {
@@ -744,10 +727,7 @@ function drawExampleViz(el, data, error, height, width) {
         let c1 = ShapeInfo.circle({center: {x: p1.x, y: p1.y}, radius: d});
         let c2 = ShapeInfo.circle({center: {x: p2.x, y: p2.y}, radius: eps});
         let itx = Intersection.intersect(c2, c1);
-        console.log('int');
-        console.log(itx);
-        console.log(d);
-        console.log(eps);
+
         return itx.points;
     }
 
@@ -841,7 +821,7 @@ function drawExampleViz(el, data, error, height, width) {
     }
 
     return {
-        drawGraph: drawGraph,
+        draw: drawGraph,
         updateNodes: updateNodes,
         updateEdges: updateEdges,
         updateError: updateError,
@@ -856,6 +836,374 @@ function drawExampleViz(el, data, error, height, width) {
         drawConeFromSource: drawConeFromSource
     }
 }
+
+
+/**
+ *
+ * @param c     control set
+ */
+function setControlState(c) {
+    console.log('set control state');
+    console.log(c);
+    console.log(hasPrev(c));
+    console.log(hasNext(c));
+    if (!hasPrev(c)) {
+        document.getElementById(c.backward).disabled = true;
+        document.getElementById(c.rewind).disabled = true;
+
+    } else {
+        if (!c.allDisabled) {
+            document.getElementById(c.backward).disabled = false;
+            document.getElementById(c.rewind).disabled = false;
+        }
+
+    }
+    if (!hasNext(c)) {
+        document.getElementById(c.forward).disabled = true;
+        document.getElementById(c.fastforward).disabled = true;
+
+    } else {
+        if (!c.allDisabled) {
+            document.getElementById(c.forward).disabled = false;
+            document.getElementById(c.fastforward).disabled = false;
+        }
+
+    }
+}
+
+/*
+Step controls
+ */
+
+/**
+ *
+ * @param c
+ * @param isDisabled
+ */
+function setAllControls(c, isDisabled) {
+    c.allDisabled = isDisabled;
+    document.getElementById(c.backward).disabled = isDisabled;
+    document.getElementById(c.rewind).disabled = isDisabled;
+    document.getElementById(c.forward).disabled = isDisabled;
+    document.getElementById(c.fastforward).disabled = isDisabled;
+}
+
+/**
+ *
+ * @param c     control set
+ */
+function disableControls(c) {
+    setAllControls(c, true);
+}
+
+function enableControls(c) {
+    setAllControls(c, false);
+}
+
+function showStep(state) {
+    return new Promise(function (resolve, reject) {
+        let textCard = document.getElementById(state.messageEl);
+        let step = state.steps[state.stepIndex];
+        textCard.textContent = step.message;
+        step.action.call();
+
+        state.viz.draw();
+        resolve();
+    });
+}
+
+function incrStepIndex(controls) {
+    controls.stepIndex += 1;
+    let numSteps = controls.steps.length;
+    if (controls.stepIndex >= numSteps - 1) {
+        controls.stepIndex = numSteps - 1;
+    } else if (controls.stepIndex < 0) {
+        controls.stepIndex = 0;
+    }
+    return controls.stepIndex;
+}
+
+function decrStepIndex(controls) {
+    controls.stepIndex -= 1;
+    let numSteps = controls.steps.length;
+    if (controls.stepIndex >= numSteps - 1) {
+        controls.stepIndex = numSteps - 1;
+    } else if (controls.stepIndex < 0) {
+        controls.stepIndex = 0;
+    }
+    return controls.stepIndex;
+}
+
+function hasNext(controls) {
+    return controls.stepIndex < controls.steps.length - 1;
+}
+
+function hasPrev(controls) {
+    return controls.stepIndex > 0;
+}
+
+function sleep(time) {
+    return new Promise((resolve) => setTimeout(resolve, time));
+}
+
+function getSequence(viz) {
+    let stepScript = [];
+    if (viz.state.stepIndex < 0) {
+        viz.state.stepIndex = 0;
+    }
+    viz.state.stepIndex += 1;
+
+    do {
+        stepScript.push(viz.state.stepIndex);
+
+
+    } while (viz.hasNext() && (viz.state.stepIndex += 1));
+    return stepScript;
+}
+
+function genericTransportHandler(e, viz) {
+    let controls = viz.state;
+
+    if (e.target && e.target.id === controls.forward) {
+        if (viz.hasNext()) {
+            viz.getNext();
+        }
+    }
+    if (e.target && e.target.id === controls.backward) {
+        if (viz.hasPrev()) {
+            viz.getPrev();
+        }
+    }
+    if (e.target && e.target.id === controls.rewind) {
+
+        viz.showFirst();
+
+    }
+    if (e.target && e.target.id === controls.fastforward) {
+        let stepScript = getSequence(viz);
+
+        disableControls(controls);
+
+        stepScript.reduce((promiseChain, currentIdx) => {
+            return promiseChain.then(function (chainResults) {
+                return sleep(2000).then(viz.getStep(currentIdx))
+            });
+        }, Promise.resolve([])).then(arrayOfResults => {
+            enableControls(controls);
+        });
+    }
+}
+
+
+/*
+viz 1 methods
+ */
+
+const DagVisualization = function (params) {
+
+    let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
+    viz.draw();
+
+    let self = this;
+
+
+    this.getStep = function (idx) {
+        self.state.stepIndex = idx;
+        viz.resetShortestPath();
+        return showStep(self.state);
+    };
+
+    this.hasNext = function () {
+        return hasNext(self.state);
+    };
+
+    this.hasPrev = function () {
+        return hasPrev(self.state);
+    };
+
+    this.getNext = function () {
+        let nextIdx = incrStepIndex(self.state);
+        setControlState(self.state);
+        return self.getStep(nextIdx);
+    };
+
+    this.getPrev = function () {
+        let prevIdx = decrStepIndex(self.state);
+        setControlState(self.state);
+
+        return self.getStep(prevIdx);
+    };
+
+    this.showFirst = function () {
+        viz.resetShortestPath();
+        self.state.stepIndex = 0;
+        setControlState(self.state);
+        return showStep(self.state);
+    };
+
+
+    this.clickHandler = function (e) {
+        genericTransportHandler(e, self);
+    };
+
+
+    this.state = {
+        rewind: "rewindDAGedges1",
+        backward: "backwardDAGedges1",
+        forward: "forwardDAGedges1",
+        fastforward: "ffDAGedges1",
+        allDisabled: false,
+        stepIndex: 0,
+        messageEl: "message-dag-1",
+        viz: viz,
+        steps: [
+            {
+                'step': 0,
+                'message': 'Model the polygonal chain as a directed acyclic graph (DAG).',
+                'action': viz.hideApproximation
+            },
+            {
+                'step': 1,
+                'message': 'Examine all possible edges (in blue) from each vertex in the chain. Notice that potential edges will skip some number of vertices.',
+                'action': viz.showApproximation
+            },
+            {
+                'step': 2,
+                'message': 'Remove any potential edges that are too far away (greater than \u03B5) from any of the vertices that they skip. This example uses the perpendicular distance from a skipped point to a potential edge as a measure of error.',
+                'action': viz.pruneIriImai
+            },
+            {
+                'step': 3,
+                'message': 'Calculate the shortest path using the remaining edges. This example uses a breadth first search to find the shortest path. The result (in green) is the simplified polygonal chain that minimizes the number of edges.',
+                'action': viz.getShortestPath
+            }
+        ]
+    };
+
+    this.showFirst();
+};
+
+
+function parallelStripVisualization(params) {
+
+    let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
+    //viz.draw();
+    let stripNodes = [
+        {"coordinates": {"x": 25, "y": 41}, "disc": true},
+        {"coordinates": {"x": 40, "y": 45}, "disc": true},
+        {"coordinates": {"x": 50, "y": 41}, "disc": true},
+        {"coordinates": {"x": 60, "y": 45}, "disc": true}];
+    let stripEdges = [{"source": 2, "target": 7, "strip": true, "show": true}];
+    viz.updateNodes(stripNodes);
+    viz.updateEdges(stripEdges);
+
+    viz.draw();
+
+    let striprange = document.getElementById('epsilonRange_strip');
+    striprange.value = params.error;
+    let stripeps = document.getElementById("strip-epsilon");
+    stripeps.textContent = striprange.value;
+    let updateStrips = function (e) {
+        if (e.target) {
+            stripeps.textContent = e.target.value;
+            viz.updateError(e.target.value);
+            viz.draw();
+        }
+    };
+
+    ["input"].map(ev => striprange.addEventListener(ev, updateStrips, false));
+
+}
+
+const ConeVisualization = function (params) {
+
+    let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
+    viz.draw();
+
+    let self = this;
+
+    this.getStep = function (idx) {
+        self.state.stepIndex = idx;
+        viz.resetShortestPath();
+        return showStep(self.state);
+    };
+
+    this.hasNext = function () {
+        return hasNext(self.state);
+    };
+
+    this.hasPrev = function () {
+        return hasPrev(self.state);
+    };
+
+    this.getNext = function () {
+        let nextIdx = incrStepIndex(self.state);
+        setControlState(self.state);
+        return self.getStep(nextIdx);
+    };
+
+    this.getPrev = function () {
+        let prevIdx = decrStepIndex(self.state);
+        setControlState(self.state);
+
+        return self.getStep(prevIdx);
+    };
+
+    this.showFirst = function () {
+        viz.resetShortestPath();
+        self.state.stepIndex = 0;
+        setControlState(self.state);
+        return showStep(self.state);
+    };
+
+
+    this.clickHandler = function (e) {
+        genericTransportHandler(e, self);
+    };
+
+    this.state = {
+        rewind: "rewindConeedges1",
+        backward: "backwardConeedges1",
+        forward: "forwardConeedges1",
+        fastforward: "ffConeedges1",
+        allDisabled: false,
+        stepIndex: 0,
+        messageEl: "message-cone-1",
+        viz: viz,
+        steps: [
+            {
+                'step': 0,
+                'message': 'Draw a double cone from the starting vertex that is defined by the tangent line from the vertex to error disc of the target vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(0, 1);
+                }
+            },
+            {
+                'step': 1,
+                'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(0, 1);
+                    viz.drawConeFromSource(0, 2);
+                }
+            },
+            {
+                'step': 2,
+                'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(0, 1);
+                    viz.drawConeFromSource(0, 2);
+                    viz.drawConeFromSource(0, 3);
+                }
+            }
+        ]
+    }
+
+    this.showFirst();
+
+};
 
 
 const demoData = {
@@ -883,441 +1231,54 @@ const demoData = {
     ]
 };
 
-const error = 10;
-const height = 500;
-const width = 500;
-//viz 1
-let dataDag = cloneDeep(demoData);
-let dag = drawExampleViz("#vizDAG", dataDag, error, height, width);
-dag.drawGraph();
-
-
-let DAGSteps = [
-    {
-        'step': 0,
-        'message': 'Model the polygonal chain as a directed acyclic graph (DAG).',
-        'action': dag.hideApproximation
-    },
-    {
-        'step': 1,
-        'message': 'Examine all possible edges (in blue) from each vertex in the chain. Notice that potential edges will skip some number of vertices.',
-        'action': dag.showApproximation
-    },
-    {
-        'step': 2,
-        'message': 'Remove any potential edges that are too far away (greater than \u03B5) from any of the vertices that they skip. This example uses the perpendicular distance from a skipped point to a potential edge as a measure of error.',
-        'action': dag.pruneIriImai
-    },
-    {
-        'step': 3,
-        'message': 'Calculate the shortest path using the remaining edges. This example uses a breadth first search to find the shortest path. The result (in green) is the simplified polygonal chain that minimizes the number of edges.',
-        'action': dag.getShortestPath
-    }
-];
-
-
-let DAGStepsIndex = 0;
-
-async function showDAGStep(idx){
-    dag.resetShortestPath();
-    let dagText = document.getElementById("message-dag-1");
-    let step = DAGSteps[idx];
-    dagText.textContent = step.message;
-    step.action.call();
-
-    if (idx <= 0){
-        document.getElementById("backwardDAGedges1").disabled = true;
-        document.getElementById("rewindDAGedges1").disabled = true;
-
-    } else {
-        if (!DAGControlsDisabled) {
-            document.getElementById("backwardDAGedges1").disabled = false;
-            document.getElementById("rewindDAGedges1").disabled = false;
-        }
-
-    }
-    if (idx >= DAGSteps.length - 1){
-        document.getElementById("forwardDAGedges1").disabled = true;
-        document.getElementById("ffDAGedges1").disabled = true;
-
-    } else {
-        if (!DAGControlsDisabled){
-            document.getElementById("forwardDAGedges1").disabled = false;
-            document.getElementById("ffDAGedges1").disabled = false;
-        }
-
-    }
-    dag.drawGraph();
-    await sleep(2500);
-}
-
-let DAGControlsDisabled = false;
-function disableDAGControls(){
-    DAGControlsDisabled = true;
-    document.getElementById("backwardDAGedges1").disabled = true;
-    document.getElementById("rewindDAGedges1").disabled = true;
-    document.getElementById("forwardDAGedges1").disabled = true;
-    document.getElementById("ffDAGedges1").disabled = true;
-}
-
-function enableDAGControls(){
-    DAGControlsDisabled = false;
-    document.getElementById("backwardDAGedges1").disabled = false;
-    document.getElementById("rewindDAGedges1").disabled = false;
-    document.getElementById("forwardDAGedges1").disabled = false;
-    document.getElementById("ffDAGedges1").disabled = false;
-}
-
-function sleep (time) {
-    return new Promise((resolve) => setTimeout(resolve, time));
-}
-
-/*document.addEventListener('click', function (e) {
-    if (e.target && e.target.id === 'forwardDAGedges1') {
-        DAGStepsIndex += 1;
-        let numSteps = DAGSteps.length;
-        if (DAGStepsIndex >= numSteps - 1){
-            DAGStepsIndex = numSteps - 1;
-        } else if (DAGStepsIndex < 0){
-            DAGStepsIndex = 0;
-        }
-        showDAGStep(DAGStepsIndex);
-    }
-    if (e.target && e.target.id === 'backwardDAGedges1') {
-        DAGStepsIndex -= 1;
-        let numSteps = DAGSteps.length;
-        if (DAGStepsIndex >= numSteps - 1){
-            DAGStepsIndex = numSteps -1;
-        } else if (DAGStepsIndex < 0){
-            DAGStepsIndex = 0;
-        }
-
-        showDAGStep(DAGStepsIndex);
-    }
-    if (e.target && e.target.id === 'rewindDAGedges1') {
-
-            while (DAGStepsIndex > 0){
-                DAGStepsIndex -= 1;
-                showDAGStep(DAGStepsIndex)
-            }
-
-    }
-    if (e.target && e.target.id === 'ffDAGedges1') {
-        DAGStepsIndex += 1;
-        let numSteps = DAGSteps.length;
-        if (DAGStepsIndex < numSteps){
-            disableDAGControls();
-            showDAGStep(DAGStepsIndex).then(function(){
-                if (DAGStepsIndex < numSteps){
-                    DAGStepsIndex += 1;
-                    showDAGStep(DAGStepsIndex).then(function(){
-                        if (DAGStepsIndex < numSteps){
-                            DAGStepsIndex += 1;
-                            showDAGStep(DAGStepsIndex);
-                        }
-                        enableDAGControls();
-                    })
-                } else {
-                    enableDAGControls();
-                }
-            });
-        } else {
-            DAGStepsIndex = numSteps -1;
-        }
-
-    }
-});*/
-
-
-showDAGStep(DAGStepsIndex);
-
-
-// viz 2
-let dataStrip = cloneDeep(demoData);
-
-let strip = drawExampleViz("#vizStrip", dataStrip, error, height, width);
-
-let stripNodes = [
-    {"coordinates": {"x": 25, "y": 41}, "disc": true},
-    {"coordinates": {"x": 40, "y": 45}, "disc": true},
-    {"coordinates": {"x": 50, "y": 41}, "disc": true},
-    {"coordinates": {"x": 60, "y": 45}, "disc": true}];
-let stripEdges = [{"source": 2, "target": 7, "strip": true, "show": true}];
-strip.updateNodes(stripNodes);
-strip.updateEdges(stripEdges);
-
-strip.drawGraph();
-
-let striprange = document.getElementById('epsilonRange_strip');
-striprange.value = error;
-let stripeps = document.getElementById("strip-epsilon");
-stripeps.textContent = striprange.value;
-let updateStrips = function (e) {
-    if (e.target) {
-        stripeps.textContent = e.target.value;
-        strip.updateError(e.target.value);
-        strip.drawGraph();
-    }
-};
-striprange.addEventListener('change', updateStrips);
-striprange.addEventListener('input', updateStrips);
-
-
-let dataCones = cloneDeep(demoData);
-
-
-// test cones
-
-
-let cones = drawExampleViz("#vizCones", dataCones, 25, height, width);
-cones.drawDiscsFromSource(0);
-
-cones.drawGraph();
-
-let coneSteps = [
-    {
-        'step': 0,
-        'message': 'Draw a double cone from the starting vertex that is defined by the tangent line from the vertex to error disc of the target vertex.',
-        'action': function(){
-            cones.clearCones();
-            cones.drawConeFromSource(0, 1);
-        }
-    },
-    {
-        'step': 1,
-        'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
-        'action': function(){
-            cones.clearCones();
-            cones.drawConeFromSource(0, 1);
-            cones.drawConeFromSource(0, 2);
-        }
-    },
-    {
-        'step': 2,
-        'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
-        'action': function(){
-            cones.clearCones();
-            cones.drawConeFromSource(0, 1);
-            cones.drawConeFromSource(0, 2);
-            cones.drawConeFromSource(0, 3);
-        }
-    }
-];
-
-function getNextConeStep(){
-    /* for now just return step associated with index */
-    coneStepsIndex += 1;
-    let numSteps = coneSteps.length;
-    if (coneStepsIndex >= numSteps - 1){
-        coneStepsIndex = numSteps - 1;
-    } else if (coneStepsIndex < 0){
-        coneStepsIndex = 0;
-    }
-
-    return coneSteps[coneStepsIndex];
-}
-
-function getPrevConeStep(){
-    /* for now just return step associated with index */
-    coneStepsIndex -= 1;
-    let numSteps = coneSteps.length;
-    if (coneStepsIndex >= numSteps - 1){
-        coneStepsIndex = numSteps -1;
-    } else if (coneStepsIndex < 0){
-        coneStepsIndex = 0;
-    }
-
-    return coneSteps[coneStepsIndex];
-}
-
-
-let coneStepsIndex = 0;
-
-function handleConeControlVisibility(){
-
-    if (coneStepsIndex <= 0){
-        document.getElementById("backwardConeedges1").disabled = true;
-        document.getElementById("rewindConeedges1").disabled = true;
-
-    } else {
-        if (!coneControlsDisabled) {
-            document.getElementById("backwardConeedges1").disabled = false;
-            document.getElementById("rewindConeedges1").disabled = false;
-        }
-
-    }
-    if (coneStepsIndex >= coneSteps.length - 1){
-        document.getElementById("forwardConeedges1").disabled = true;
-        document.getElementById("ffConeedges1").disabled = true;
-
-    } else {
-        if (!coneControlsDisabled){
-            document.getElementById("forwardConeedges1").disabled = false;
-            document.getElementById("ffConeedges1").disabled = false;
-        }
-
-    }
-}
-
-
-function showFirstConeStep(){
-    cones.resetShortestPath();
-    let elText = document.getElementById("message-cone-1");
-    let step = coneSteps[0];
-    elText.textContent = step.message;
-    step.action.call();
-
-    handleConeControlVisibility();
-
-    cones.drawGraph();
-}
-
-async function showNextConeStep(){
-    cones.resetShortestPath();
-    let elText = document.getElementById("message-cone-1");
-    let step = getNextConeStep();
-    elText.textContent = step.message;
-    step.action.call();
-
-    handleConeControlVisibility();
-
-    cones.drawGraph();
-    await sleep(2500);
-}
-
-async function showPrevConeStep(){
-    cones.resetShortestPath();
-    let elText = document.getElementById("message-cone-1");
-    let step = getPrevConeStep();
-    elText.textContent = step.message;
-    step.action.call();
-
-    handleConeControlVisibility();
-
-    cones.drawGraph();
-    await sleep(0);
-}
-
-let coneControlsDisabled = false;
-function disableConeControls(){
-    coneControlsDisabled = true;
-    document.getElementById("backwardConeedges1").disabled = true;
-    document.getElementById("rewindConeedges1").disabled = true;
-    document.getElementById("forwardConeedges1").disabled = true;
-    document.getElementById("ffConeedges1").disabled = true;
-}
-
-function enableConeControls(){
-    coneControlsDisabled = false;
-    document.getElementById("backwardConeedges1").disabled = false;
-    document.getElementById("rewindConeedges1").disabled = false;
-    document.getElementById("forwardConeedges1").disabled = false;
-    document.getElementById("ffConeedges1").disabled = false;
-}
-
-
-document.addEventListener('click', function (e) {
-    if (e.target && e.target.id === 'forwardDAGedges1') {
-        DAGStepsIndex += 1;
-        let numSteps = DAGSteps.length;
-        if (DAGStepsIndex >= numSteps - 1){
-            DAGStepsIndex = numSteps - 1;
-        } else if (DAGStepsIndex < 0){
-            DAGStepsIndex = 0;
-        }
-        showDAGStep(DAGStepsIndex);
-    }
-    if (e.target && e.target.id === 'backwardDAGedges1') {
-        DAGStepsIndex -= 1;
-        let numSteps = DAGSteps.length;
-        if (DAGStepsIndex >= numSteps - 1){
-            DAGStepsIndex = numSteps -1;
-        } else if (DAGStepsIndex < 0){
-            DAGStepsIndex = 0;
-        }
-
-        showDAGStep(DAGStepsIndex);
-    }
-    if (e.target && e.target.id === 'rewindDAGedges1') {
-
-        while (DAGStepsIndex > 0){
-            DAGStepsIndex -= 1;
-            showDAGStep(DAGStepsIndex)
-        }
-
-    }
-    if (e.target && e.target.id === 'ffDAGedges1') {
-        DAGStepsIndex += 1;
-        let numSteps = DAGSteps.length;
-        if (DAGStepsIndex < numSteps){
-            disableDAGControls();
-            showDAGStep(DAGStepsIndex).then(function(){
-                if (DAGStepsIndex < numSteps){
-                    DAGStepsIndex += 1;
-                    showDAGStep(DAGStepsIndex).then(function(){
-                        if (DAGStepsIndex < numSteps){
-                            DAGStepsIndex += 1;
-                            showDAGStep(DAGStepsIndex);
-                        }
-                        enableDAGControls();
-                    })
-                } else {
-                    enableDAGControls();
-                }
-            });
-        } else {
-            DAGStepsIndex = numSteps -1;
-        }
-
-    }
-
-    /*
-    for cone viz
-     */
-
-    if (e.target && e.target.id === 'forwardConeedges1') {
-
-        showNextConeStep();
-    }
-    if (e.target && e.target.id === 'backwardConeedges1') {
-        showPrevConeStep();
-    }
-    if (e.target && e.target.id === 'rewindConeedges1') {
-
-        while (coneStepsIndex > 0){
-            showPrevConeStep();
-        }
-
-    }
-    if (e.target && e.target.id === 'ffConeedges1') {
-        coneStepsIndex += 1;
-        let numSteps = coneSteps.length;
-        if (coneStepsIndex < numSteps){
-            disableConeControls();
-            showNextConeStep().then(function(){
-                if (coneStepsIndex < numSteps){
-                    showNextConeStep(coneStepsIndex).then(function(){
-                        if (coneStepsIndex < numSteps){
-                            showNextConeStep(coneStepsIndex);
-                        }
-                        enableConeControls();
-                    })
-                } else {
-                    enableConeControls();
-                }
-            });
-        } else {
-            coneStepsIndex = numSteps -1;
-        }
-
-    }
+let dagViz = new DagVisualization({
+    vizEl: "#vizDAG",
+    data: cloneDeep(demoData),
+    error: 10,
+    h: 500,
+    w: 500
 });
 
 
-showFirstConeStep();
+/*
+parallel strip viz
+ */
+
+let stripViz = parallelStripVisualization({
+    vizEl: "#vizStrip",
+    data: cloneDeep(demoData),
+    error: 10,
+    h: 500,
+    w: 500
+});
+
+
+/*
+cones viz
+ */
+let coneViz = new ConeVisualization({
+    vizEl: "#vizCones",
+    data: cloneDeep(demoData),
+    error: 25,
+    h: 500,
+    w: 500
+});
+
+coneViz.state.viz.drawDiscsFromSource(0);
+coneViz.state.viz.draw();
+
+
+//let demo = drawExampleViz("#vizDemo", cloneDeep(demoData), error, 750, 1000);
+//demo.draw();
+
+
+/*
+Event handlers
+ */
 
 
 
-
-let demo = drawExampleViz("#vizDemo", cloneDeep(demoData), error, 750, 1000);
-demo.drawGraph();
+document.addEventListener('click', function (e) {
+    dagViz.clickHandler(e);
+    coneViz.clickHandler(e);
+});
