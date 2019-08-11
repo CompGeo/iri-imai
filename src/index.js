@@ -2,7 +2,7 @@ import * as bootstrap from 'bootstrap';
 import * as d3 from 'd3';
 import './styles/main.scss';
 import cloneDeep from 'lodash/cloneDeep';
-import {ShapeInfo, Intersection} from "kld-intersections";
+import {ShapeInfo, Intersection, IntersectionQuery} from "kld-intersections";
 import "@babel/polyfill";
 
 
@@ -160,9 +160,6 @@ function drawExampleViz(el, data, error, height, width) {
          * construct an adjacency list, prepare for a BFS
          */
 
-        //console.log('gathering neighbors');
-        //console.log('edges');
-        //console.log(data.edges);
         data.nodes.forEach(function(node, idx){
             let neighbors = [];
 
@@ -262,13 +259,120 @@ function drawExampleViz(el, data, error, height, width) {
     }
 
 
-    generateAllApproxEdges();
-
+    initializeFlags();
 
     function getEdges() {
         return data.edges.filter(function (e) {
             return (!e.approx) || (e.approx && e.show);
         });
+    }
+
+    function findEdgesToussaint() {
+        const size = data.nodes.length;
+
+        data.nodes.forEach(function (node, idx) {
+            // maintain the intersection of all cones starting from this point
+            // initialize with size of full screen
+            let coneIntersection = [{x: xmin, y: ymin}, {x: xmin, y: ymax}, {x: xmax, y: ymax},
+                {x: xmax, y: ymin}, {x: xmin, y: ymin}];
+            if (idx < size) {
+                for (let j = idx + 1; j < size; j++) {
+                    let testNode = data.nodes[j];
+
+                    // generate the new cone. for the visualization we want to include the cone that fails the test
+                    let currentCone = generateDoubleCone(node, testNode);
+                    if (node.hasOwnProperty('cones')) {
+                        node.cones.push({"target": j, "geom": currentCone});
+                    } else {
+                        node.cones = [{"target": j, "geom": currentCone}];
+                    }
+
+                    // if data.nodes[j] intersects with currentCone, then add edge
+                    let queryResult = IntersectionQuery.pointInPolygon(testNode.coordinates, coneIntersection);
+
+                    if (!queryResult) {
+                        break;
+                    }
+                    // add edge,if not already there
+                    let matches = data.edges.filter(function (e) {
+                        return e.source === idx && e.target === j;
+                    });
+                    if (matches.length === 0) {
+                        data.edges.push({"source": idx, "target": j, "approx": true});
+                    }
+
+                    // intersect cone for node to data.nodes[j].
+                    let intxResult = Intersection.intersectPolygonPolygon(coneIntersection, currentCone);
+                    if (intxResult.status !== "Intersection") {
+                        break;
+                    }
+                    coneIntersection = intxResult.points;
+                }
+            }
+        });
+    }
+
+    function generateDoubleCone(node1, node2) {
+        let p1 = node1.coordinates;
+        let p2 = node2.coordinates;
+
+        let points = [];
+        let doubleCone = true;
+        try {
+            points = getDiscTangentPoints(p1, p2, node2.epsilon);
+        } catch (e) {
+            console.log('dont draw a cone');
+            // one error disc intersects another
+            doubleCone = false;
+        }
+
+        let polygon = [];
+        if (!doubleCone) {
+            // open cone == the whole plane
+            polygon.push({x: xmin, y: ymin});
+            polygon.push({x: xmin, y: ymax});
+            polygon.push({x: xmax, y: ymax});
+            polygon.push({x: xmax, y: ymin});
+            polygon.push({x: xmin, y: ymin});
+
+        } else {
+            let pe1 = getExtremePointsForLine(p1, points[0]);
+            let pe2 = getExtremePointsForLine(p1, points[1]);
+
+
+            let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
+            let forward = [];
+            let backward = [];
+            // gather segments on each side of p1 to construct cones as polylines
+            ex_points.forEach(function (p) {
+                if (pointIsOn(p1, p, points[0]) || pointIsOn(p1, p, points[1])) {
+
+                    forward.push(p);
+                } else {
+                    backward.push(p);
+                }
+            });
+
+            // need to maintain clockwise order, pair up points properly
+            polygon.push({x: p1.x, y: p1.y});
+            polygon.push({x: forward[0].x, y: forward[0].y});
+            polygon.push({x: forward[1].x, y: forward[1].y});
+            polygon.push({x: p1.x, y: p1.y});
+            polygon.push({x: backward[0].x, y: backward[0].y});
+            polygon.push({x: backward[1].x, y: backward[1].y});
+            polygon.push({x: p1.x, y: p1.y});
+
+        }
+
+        return polygon;
+    }
+
+    function polygonToPolyline(polygon) {
+        let pArr = [];
+        polygon.forEach(function (pt) {
+            pArr.push(xScale(pt.x) + ' ' + yScale(pt.y));
+        });
+        return pArr.join(', ');
     }
 
     function drawGraph() {
@@ -457,50 +561,17 @@ function drawExampleViz(el, data, error, height, width) {
             .join(
                 enter => enter.append('polyline')
                     .attr('points', function (d) {
-                        let p1 = data.nodes[d.source].coordinates;
-                        let p2 = data.nodes[d.target].coordinates;
-                        let points = [];
-                        let doubleCone = true;
-                        try {
-                            points = getDiscTangentPoints(p1, p2, d.epsilon);
-                        } catch (e) {
-                            console.log('dont draw a cone');
-                            doubleCone = false;
+                        let sourceNode = data.nodes[d.source];
+                        if (!sourceNode.hasOwnProperty('cones')) {
+                            return "";
                         }
-
-                        let polyline = '';
-                        if (!doubleCone) {
-                            // open cone == the whole plane
-                            polyline = xScale(xmin) + ' ' + yScale(ymin) + ', ' + xScale(xmin) + ' ' + yScale(ymax);
-                            polyline += ', ' + xScale(xmax) + ' ' + yScale(ymax) + ', ' + xScale(xmax) + ' ';
-                            polyline += yScale(ymin) + ', ' + xScale(xmin) + ' ' + yScale(ymin);
-                        } else {
-                            let pe1 = getExtremePointsForLine(p1, points[0]);
-                            let pe2 = getExtremePointsForLine(p1, points[1]);
-
-
-                            let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
-                            let forward = [];
-                            let backward = [];
-                            // gather segments on each side of p1 to construct cones as polylines
-                            ex_points.forEach(function (p) {
-                                if (pointIsOn(p1, p, points[0]) || pointIsOn(p1, p, points[1])) {
-
-                                    forward.push(p);
-                                } else {
-                                    backward.push(p);
-                                }
-                            });
-
-                            // need to maintain clockwise order, pair up points properly
-                            polyline = xScale(p1.x) + ' ' + yScale(p1.y) + ', ' + xScale(forward[0].x) + ' ' + yScale(forward[0].y) + ', ';
-                            polyline += xScale(forward[1].x) + ' ' + yScale(forward[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
-                            polyline += ', ' + xScale(backward[0].x) + ' ' + yScale(backward[0].y) + ', ';
-                            polyline += xScale(backward[1].x) + ' ' + yScale(backward[1].y) + ', ' + xScale(p1.x) + ' ' + yScale(p1.y);
-                        }
-                        //console.log(trianglePoints);
-                        // todo: calculate what node points intersect the polyline. union with previous intersection.
-                        return polyline;
+                        let polygon = "";
+                        sourceNode.cones.forEach(function (c) {
+                            if (c.target === d.target) {
+                                polygon = c.geom;
+                            }
+                        });
+                        return polygonToPolyline(polygon);
                     })
                     .style('stroke', 'black')
                     .style('stroke-width', "2")
@@ -833,7 +904,9 @@ function drawExampleViz(el, data, error, height, width) {
         resetShortestPath: resetShortestPath,
         drawDiscsFromSource: drawDiscsFromSource,
         clearCones: clearCones,
-        drawConeFromSource: drawConeFromSource
+        drawConeFromSource: drawConeFromSource,
+        findEdgesToussaint: findEdgesToussaint,
+        data: data
     }
 }
 
@@ -843,10 +916,7 @@ function drawExampleViz(el, data, error, height, width) {
  * @param c     control set
  */
 function setControlState(c) {
-    console.log('set control state');
-    console.log(c);
-    console.log(hasPrev(c));
-    console.log(hasNext(c));
+
     if (!hasPrev(c)) {
         document.getElementById(c.backward).disabled = true;
         document.getElementById(c.rewind).disabled = true;
@@ -1002,6 +1072,7 @@ viz 1 methods
 const DagVisualization = function (params) {
 
     let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
+    viz.generateAllApproxEdges();
     viz.draw();
 
     let self = this;
@@ -1086,6 +1157,7 @@ const DagVisualization = function (params) {
 
 function parallelStripVisualization(params) {
 
+    params.data.edges.push({"source": 2, "target": 7, "strip": true, "approx": true, "show": true});
     let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
     //viz.draw();
     let stripNodes = [
@@ -1093,9 +1165,7 @@ function parallelStripVisualization(params) {
         {"coordinates": {"x": 40, "y": 45}, "disc": true},
         {"coordinates": {"x": 50, "y": 41}, "disc": true},
         {"coordinates": {"x": 60, "y": 45}, "disc": true}];
-    let stripEdges = [{"source": 2, "target": 7, "strip": true, "show": true}];
     viz.updateNodes(stripNodes);
-    viz.updateEdges(stripEdges);
 
     viz.draw();
 
@@ -1118,6 +1188,8 @@ function parallelStripVisualization(params) {
 const ConeVisualization = function (params) {
 
     let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
+    viz.findEdgesToussaint();
+    console.log(viz.data);
     viz.draw();
 
     let self = this;
