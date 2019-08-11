@@ -298,7 +298,7 @@ function drawExampleViz(el, data, error, height, width) {
                         return e.source === idx && e.target === j;
                     });
                     if (matches.length === 0) {
-                        data.edges.push({"source": idx, "target": j, "approx": true});
+                        data.edges.push({"source": idx, "target": j, "approx": true, "keep": true});
                     }
 
                     // intersect cone for node to data.nodes[j].
@@ -883,6 +883,9 @@ function drawExampleViz(el, data, error, height, width) {
         });
     }
 
+    // todo: should be able to generate this by iterating over nodes and edges.
+    // todo: show cones from each starting point, place edges
+    // todo: should just hard code for the cone viz
     function drawConeFromSource(srcIdx, tgtIdx) {
         data.edges.forEach(function (e, idx) {
             if (e.source === srcIdx && e.target === tgtIdx){
@@ -1189,7 +1192,6 @@ const ConeVisualization = function (params) {
 
     let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
     viz.findEdgesToussaint();
-    console.log(viz.data);
     viz.draw();
 
     let self = this;
@@ -1269,9 +1271,117 @@ const ConeVisualization = function (params) {
                     viz.drawConeFromSource(0, 2);
                     viz.drawConeFromSource(0, 3);
                 }
+            },
+            {
+                'step': 3,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(1, 2);
+
+                }
+            },
+            {
+                'step': 3,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(1, 2);
+                    viz.drawConeFromSource(1, 3);
+
+
+                }
+            },
+            {
+                'step': 4,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(2, 3);
+
+
+                }
+            },
+            {
+                'step': 4,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(2, 3);
+                    viz.drawConeFromSource(2, 4);
+
+
+                }
+            },
+            {
+                'step': 5,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(2, 3);
+                    viz.drawConeFromSource(2, 4);
+                    viz.drawConeFromSource(2, 5);
+
+
+                }
+            },
+            {
+                'step': 6,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(3, 4);
+
+                }
+            },
+            {
+                'step': 7,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(4, 5);
+
+                }
+            },
+            {
+                'step': 8,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(4, 5);
+                    viz.drawConeFromSource(4, 6);
+
+                }
+            },
+            {
+                'step': 9,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(5, 6);
+
+                }
+            },
+            {
+                'step': 10,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(6, 7);
+
+                }
+            },
+            {
+                'step': 10,
+                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(7, 8);
+
+                }
             }
         ]
-    }
+    };
 
     this.showFirst();
 
