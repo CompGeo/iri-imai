@@ -269,7 +269,7 @@ function drawExampleViz(el, data, error, height, width) {
 
     function dotProduct(a, b, c) {
         // (Bx - Ax) * (Cy - Ay) - (By - Ay) * (Cx - Ax)
-        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.y - a.y);
+        return ((b.x - a.x) * (c.y - a.y)) - ((b.y - a.y) * (c.y - a.y));
     }
 
     function isPointBetweenLines(line1pt1, line1pt2, line2pt1, line2pt2, testPoint, validationPoint) {
@@ -348,52 +348,47 @@ function drawExampleViz(el, data, error, height, width) {
     function findEdgesToussaint() {
         const size = data.nodes.length;
 
-        data.nodes.forEach(function (node, idx) {
-            // maintain the intersection of all cones starting from this point
+        data.nodes.forEach(function (node, sourceIdx) {
 
-            let bConeIntersection = null;
+            //let bConeIntersection = null;
+            //let fConeIntersection = null;
+
+            // start with open cone
             let currentCone = {isPlane: true};
+            let currentConeGeom = [];
+
+            // maintain all cones starting from this point, so we can test intersection
             let allfCones = [];
             let allbCones = [];
 
-            let fConeIntersection = null;
+            // don't process the last point as a source
+            if (sourceIdx < size) {
+                // index of target points
+                for (let j = sourceIdx + 1; j < size; j++) {
 
-            if (idx < size) {
-                for (let j = idx + 1; j < size; j++) {
-                    let testNode = data.nodes[j];
+                    // we will test this node to see if it is in the intersection of all cones
+                    let targetNode = data.nodes[j];
 
                     let queryResultF = true;
                     let queryResultB = true;
 
-                    if (fConeIntersection === null) {
+                    if (currentCone.isPlane) {
+                        // plane intersects with everything, but we don't need to add to the all cones list
                         queryResultF = true;
                     } else {
-                        console.log('fintersect');
-                        console.log(fConeIntersection);
+                        // we're storing the geometry of current cone in all cones
                         allfCones.forEach(function (fcone) {
-                            queryResultF = queryResultF && IntersectionQuery.pointInPolygon(testNode.coordinates, fcone);
+                            queryResultF = queryResultF && IntersectionQuery.pointInPolygon(targetNode.coordinates, fcone);
                         });
                     }
 
-                    if (bConeIntersection === null) {
+                    if (currentCone.isPlane) {
                         queryResultB = true;
                     } else {
-                        console.log('bintersect');
-                        console.log(bConeIntersection);
                         allbCones.forEach(function (bcone) {
-                            queryResultB = queryResultB && IntersectionQuery.pointInPolygon(testNode.coordinates, bcone);
+                            queryResultB = queryResultB && IntersectionQuery.pointInPolygon(targetNode.coordinates, bcone);
                         });
                     }
-                    // if data.nodes[j] intersects with currentCone, then add edge
-                    /*                    if (coneIntersection.isPlane){
-                                            queryResult = true;
-                                        } else if (coneIntersection.empty){
-                                            queryResult = false;
-                                        } else {
-                                            queryResult = isPointBetweenLines(coneIntersection.source, coneIntersection.tanPts[0],
-                                                coneIntersection.source, coneIntersection.tanPts[1], testNode.coordinates,
-                                                coneIntersection.validator);
-                                        }*/
 
                     let geom = getGeomFromCone(currentCone);
                     let displayGeom = cloneDeep(geom);
@@ -414,52 +409,82 @@ function drawExampleViz(el, data, error, height, width) {
                                 "coneInt": []
                             }];
                         }
+                    } else {
+                        console.log('plane');
+                        console.log(displayGeom[0]);
+                        if (node.hasOwnProperty('cones')) {
+                            node.cones.push({
+                                "target": j,
+                                "geom": displayGeom[0],
+                                "intx": true,
+                                "coneInt": []
+                            });
+                        } else {
+                            node.cones = [{
+                                "target": j,
+                                "geom": displayGeom[0],
+                                "intx": true,
+                                "coneInt": []
+                            }];
+                        }
                     }
 
 
                     if (!queryResultF && !queryResultB) {
                         break;
                     }
-                    // add edge,if not already there
+                    // add edge, if intersection and not already there
                     let matches = data.edges.filter(function (e) {
-                        return e.source === idx && e.target === j;
+                        return e.source === sourceIdx && e.target === j;
                     });
                     if (matches.length === 0) {
-                        data.edges.push({"source": idx, "target": j, "approx": true, "keep": true});
+                        data.edges.push({
+                            "source": sourceIdx,
+                            "target": j,
+                            "approx": true,
+                            "keep": true,
+                            "show": false
+                        });
                     }
 
                     // generate the new cone. for the visualization we want to include the cone that fails the test
-                    currentCone = generateDoubleCone(node, testNode);
+                    // update the current cone
+                    currentCone = generateDoubleCone(node, targetNode);
+
+                    if (!currentCone.isPlane) {
+                        allfCones.push(cloneDeep(currentCone.geom[0]));
+                        allbCones.push(cloneDeep(currentCone.geom[1]));
+                    }
                     // intersect cone for node to data.nodes[j].
-                    let bIntxResult = false;
-                    if (bConeIntersection === null) {
-                        bIntxResult = {
-                            status: "Intersection",
-                            points: currentCone.geom[0]
-                        };
-                    } else {
-                        bIntxResult = Intersection
-                            .intersect(ShapeInfo.polygon(bConeIntersection), ShapeInfo.polygon(currentCone.geom[1]));
-                    }
+                    /*                    let bIntxResult = false;
+                                        if (bConeIntersection === null) {
+                                            bIntxResult = {
+                                                status: "Intersection",
+                                                points: currentCone.geom[0]
+                                            };
+                                        } else {
+                                            bIntxResult = Intersection
+                                                .intersect(ShapeInfo.polygon(bConeIntersection), ShapeInfo.polygon(currentCone.geom[1]));
+                                        }
 
-                    let fIntxResult = false;
-                    if (fConeIntersection === null) {
-                        fIntxResult = {
-                            status: "Intersection",
-                            points: currentCone.geom[1]
-                        };
-                    } else {
-                        fIntxResult = Intersection
-                            .intersect(ShapeInfo.polygon(fConeIntersection), ShapeInfo.polygon(currentCone.geom[0]));
-                    }
-                    if (bIntxResult.status === "No Intersection" && fIntxResult.status === "No Intersection") {
-                        break;
-                    }
-                    bConeIntersection = bIntxResult.points;
-                    fConeIntersection = fIntxResult.points;
+                                        let fIntxResult = false;
+                                        if (fConeIntersection === null) {
+                                            fIntxResult = {
+                                                status: "Intersection",
+                                                points: currentCone.geom[1]
+                                            };
+                                        } else {
+                                            fIntxResult = Intersection
+                                                .intersect(ShapeInfo.polygon(fConeIntersection), ShapeInfo.polygon(currentCone.geom[0]));
+                                        }
+                                        if (bIntxResult.status === "No Intersection" && fIntxResult.status === "No Intersection") {
+                                            break;
+                                        }
+                                        bConeIntersection = bIntxResult.points;
+                                        fConeIntersection = fIntxResult.points;
 
-                    allfCones.push(currentCone.geom[0]);
-                    allbCones.push(currentCone.geom[1]);
+                                        allfCones.push(currentCone.geom[0]);
+                                        allbCones.push(currentCone.geom[1]);*/
                 }
             }
         });
@@ -526,8 +551,8 @@ function drawExampleViz(el, data, error, height, width) {
 
 
     function getWedges(coneInfo) {
-        let pe1 = getExtremePointsForLine(coneInfo.source, coneInfo.tanPts[0]);
-        let pe2 = getExtremePointsForLine(coneInfo.source, coneInfo.tanPts[1]);
+        let pe1 = getEdgePointsForLine(coneInfo.source, coneInfo.tanPts[0]);
+        let pe2 = getEdgePointsForLine(coneInfo.source, coneInfo.tanPts[1]);
 
         console.log(pe1);
         let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
@@ -566,9 +591,9 @@ function drawExampleViz(el, data, error, height, width) {
         }
 
         let back_sorted = [];
-        let extended = getExtremePointsForLine(coneInfo.source, coneInfo.validator);
+        let extended = getEdgePointsForLine(coneInfo.source, coneInfo.validator);
 
-        let pt = getReflectedPoint(coneInfo.source, coneInfo.validator, extended);
+        let pt = getOppositePoint(coneInfo.source, coneInfo.validator, extended);
 
         let x = (dotProduct(coneInfo.source, backward[0], pt)) < 0 ? -1 : 1;
         let y = (dotProduct(backward[0], backward[1], pt)) < 0 ? -1 : 1;
@@ -600,14 +625,37 @@ function drawExampleViz(el, data, error, height, width) {
         }
     }
 
+    function getSign(polygon, interiorPt) {
+        let sign = 1;
+        if (dotProduct(polygon[0], polygon[1], interiorPt) < 0) {
+            sign = -1;
+        }
+        for (let i = 0; i < polygon.length - 1; i++) {
+
+            if (sign === 1) {
+                if (dotProduct(polygon[i], polygon[i + 1], interiorPt) < 0) {
+                    console.log('segment');
+                    console.log(polygon[i], polygon[i + 1]);
+                    console.log(interiorPt);
+                    throw new Error('point shoud be interior');
+                }
+            } else {
+                if (dotProduct(polygon[i], polygon[i + 1], interiorPt) > 0) {
+                    console.log('segment');
+                    console.log(polygon[i], polygon[i + 1]);
+                    console.log(interiorPt);
+                    throw new Error('point shoud be interior');
+                }
+            }
+
+        }
+        return sign;
+    }
+
     function getGeomFromCone(coneInfo) {
         let polygon = [];
         if (coneInfo.isPlane) {
             // open cone == the whole plane
-            let xmin = -1000;
-            let ymin = -1000;
-            let xmax = 1000;
-            let ymax = 1000;
             let plane = [{x: xmin, y: ymin},
                 {x: xmin, y: ymax},
                 {x: xmax, y: ymax},
@@ -616,9 +664,15 @@ function drawExampleViz(el, data, error, height, width) {
 
             polygon.push([plane, plane]);
 
+            let planeQuery = IntersectionQuery.pointInPolygon({x: 50, y: 50}, plane);
+            if (!planeQuery) {
+                console.log('plane query');
+                throw new Error('point should be in polygon');
+            }
+
         } else {
-            let pe1 = getExtremePointsForLine(coneInfo.source, coneInfo.tanPts[0]);
-            let pe2 = getExtremePointsForLine(coneInfo.source, coneInfo.tanPts[1]);
+            let pe1 = getEdgePointsForLine(coneInfo.source, coneInfo.tanPts[0]);
+            let pe2 = getEdgePointsForLine(coneInfo.source, coneInfo.tanPts[1]);
 
 
             let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
@@ -637,7 +691,7 @@ function drawExampleViz(el, data, error, height, width) {
 
             //let wedges = getWedges(coneInfo);
 
-            // need to maintain clockwise order, pair up points properly
+            // need to maintain ccw winding order, pair up points properly
             let forw_poly = [{x: coneInfo.source.x, y: coneInfo.source.y},
                 {x: forward[0].x, y: forward[0].y}];
 
@@ -672,6 +726,15 @@ function drawExampleViz(el, data, error, height, width) {
             }
             forw_poly.push({x: forward[1].x, y: forward[1].y});
             forw_poly.push({x: coneInfo.source.x, y: coneInfo.source.y});
+
+            console.log('args');
+            console.log([coneInfo.validator, forw_poly]);
+            let forwQuery = IntersectionQuery.pointInPolygon(coneInfo.validator, forw_poly);
+            console.log(forwQuery);
+            if (!forwQuery) {
+                throw new Error('point should be in polygon');
+            }
+
 
             let back_poly = [{x: coneInfo.source.x, y: coneInfo.source.y}];
             back_poly.push({x: backward[0].x, y: backward[0].y});
@@ -708,6 +771,16 @@ function drawExampleViz(el, data, error, height, width) {
 
             back_poly.push({x: backward[1].x, y: backward[1].y});
             back_poly.push({x: coneInfo.source.x, y: coneInfo.source.y});
+            let extended = getEdgePointsForLine(coneInfo.source, coneInfo.validator);
+            let testPt = getOppositePoint(coneInfo.source, coneInfo.validator, extended);
+
+            console.log('back args');
+            console.log([testPt, back_poly]);
+            let backQuery = IntersectionQuery.pointInPolygon(testPt, back_poly);
+            console.log(backQuery);
+            if (!backQuery) {
+                throw new Error('point should be in polygon');
+            }
 
             polygon = [forw_poly, back_poly];
         }
@@ -840,7 +913,7 @@ function drawExampleViz(el, data, error, height, width) {
                         let p2 = data.nodes[d.target].coordinates;
 
                         let pts = getEdgePointsForLine(p1, p2);
-                        return xScale(pts[0][0]);
+                        return xScale(pts[0].x);
                     })
                     .attr("y1", function (d) {
                         if (!d.strip) return null;
@@ -848,7 +921,7 @@ function drawExampleViz(el, data, error, height, width) {
                         let p2 = data.nodes[d.target].coordinates;
 
                         let pts = getEdgePointsForLine(p1, p2);
-                        return yScale(pts[0][1]);
+                        return yScale(pts[0].y);
                     })
                     .attr("x2", function (d) {
                         if (!d.strip) return null;
@@ -856,7 +929,7 @@ function drawExampleViz(el, data, error, height, width) {
                         let p2 = data.nodes[d.target].coordinates;
 
                         let pts = getEdgePointsForLine(p1, p2);
-                        return xScale(pts[1][0]);
+                        return xScale(pts[1].x);
                     })
                     .attr("y2", function (d) {
                         if (!d.strip) return null;
@@ -864,7 +937,7 @@ function drawExampleViz(el, data, error, height, width) {
                         let p2 = data.nodes[d.target].coordinates;
 
                         let pts = getEdgePointsForLine(p1, p2);
-                        return yScale(pts[1][1]);
+                        return yScale(pts[1].y);
                     })
                     .style("stroke", function (d) {
                         if (d.strip) {
@@ -1082,39 +1155,39 @@ function drawExampleViz(el, data, error, height, width) {
     }
 
 
+    /*    function getEdgePointsForLine(p1, p2) {
+            let eymin = ymin;
+            let exmin = xmin;
+            let eymax = ymax;
+            let exmax = xmax;
+
+            if (isVertical(p1, p2)) {
+                return [[p1.x, eymin], [p1.x, eymax]];
+            }
+            if (isHorizontal(p1, p2)) {
+                return [[exmin, p1.y], [exmax, p1.y]];
+            }
+
+            let itx = testEdgeIntersections(p1, p2);
+            if (itx.top && itx.left) {
+                return [[exmin, getYFromXForLine(p1, p2, exmin)], [getXFromYForLine(p1, p2, eymax), eymax]];
+            } else if (itx.top && itx.right) {
+                return [[getXFromYForLine(p1, p2, eymax), eymax], [exmax, getYFromXForLine(p1, p2, exmax)]];
+            } else if (itx.top & itx.bottom) {
+                return [[getXFromYForLine(p1, p2, eymax), eymax], [getXFromYForLine(p1, p2, eymin), eymin]];
+            } else if (itx.left && itx.right) {
+                return [[exmin, getYFromXForLine(p1, p2, exmin)], [xmax, getYFromXForLine(p1, p2, exmax)]];
+            } else if (itx.left && itx.bottom) {
+                return [[exmin, getYFromXForLine(p1, p2, exmin)], [getXFromYForLine(p1, p2, eymin), eymin]];
+            } else if (itx.right && itx.bottom) {
+                return [[getXFromYForLine(p1, p2, eymin), eymin], [exmax, getYFromXForLine(p1, p2, exmax)]];
+            } else {
+                console.log('no itx?');
+                console.log(itx);
+            }
+        }*/
+
     function getEdgePointsForLine(p1, p2) {
-        let eymin = ymin;
-        let exmin = xmin;
-        let eymax = ymax;
-        let exmax = xmax;
-
-        if (isVertical(p1, p2)) {
-            return [[p1.x, eymin], [p1.x, eymax]];
-        }
-        if (isHorizontal(p1, p2)) {
-            return [[exmin, p1.y], [exmax, p1.y]];
-        }
-
-        let itx = testEdgeIntersections(p1, p2);
-        if (itx.top && itx.left) {
-            return [[exmin, getYFromXForLine(p1, p2, exmin)], [getXFromYForLine(p1, p2, eymax), eymax]];
-        } else if (itx.top && itx.right) {
-            return [[getXFromYForLine(p1, p2, eymax), eymax], [exmax, getYFromXForLine(p1, p2, exmax)]];
-        } else if (itx.top & itx.bottom) {
-            return [[getXFromYForLine(p1, p2, eymax), eymax], [getXFromYForLine(p1, p2, eymin), eymin]];
-        } else if (itx.left && itx.right) {
-            return [[exmin, getYFromXForLine(p1, p2, exmin)], [xmax, getYFromXForLine(p1, p2, exmax)]];
-        } else if (itx.left && itx.bottom) {
-            return [[exmin, getYFromXForLine(p1, p2, exmin)], [getXFromYForLine(p1, p2, eymin), eymin]];
-        } else if (itx.right && itx.bottom) {
-            return [[getXFromYForLine(p1, p2, eymin), eymin], [exmax, getYFromXForLine(p1, p2, exmax)]];
-        } else {
-            console.log('no itx?');
-            console.log(itx);
-        }
-    }
-
-    function getExtremePointsForLine(p1, p2) {
 
         let eymin = ymin;
         let exmin = xmin;
@@ -1206,15 +1279,36 @@ function drawExampleViz(el, data, error, height, width) {
         return itx.points;
     }
 
-    function getReflectedPoint(p1, p2, line) {
+    /**
+     * get a point on the other side of the starting point, to test if interior to back half of double cone
+     * @param p1
+     * @param p2
+     * @param line
+     * @returns {*}
+     */
+    function getOppositePoint(p1, p2, line) {
         let d = euclideanDistance(p1, p2);
-        let c1 = ShapeInfo.circle({center: {x: p1.x, y: p1.y}, radius: d});
-        let itx = Intersection.intersect(c1, ShapeInfo.line(line));
-        let pts = itx.points;
-        if ((Math.abs(pts[0].x - p2.x) < 1) && (Math.abs(pts[0].y - p2.y) < 1)) {
-            return pts[1];
-        } else {
-            return pts[0];
+        let c1 = ShapeInfo.circle({center: {x: p1.x, y: p1.y}, radius: 1});
+        let c2 = ShapeInfo.circle({center: {x: p2.x, y: p2.y}, radius: d - 1});
+        let itx1 = Intersection.intersect(c1, ShapeInfo.line(line));
+        let pts1 = itx1.points;
+        let itx2 = Intersection.intersect(c2, ShapeInfo.line(line));
+        let pts2 = itx2.points;
+        // each set of intersections should share one point. we want to return the point from intx1 that is not shared
+        let e = 0.2;
+        if (pts2.length === 2) {
+            if ((Math.abs(pts1[0].x - pts2[0].x) < e) && (Math.abs(pts1[0].y - pts2[0].y) < e) ||
+                (Math.abs(pts1[0].x - pts2[1].x) < e) && (Math.abs(pts1[0].y - pts2[1].y) < e)) {
+                return pts1[1];
+            } else {
+                return pts1[0];
+            }
+        } else if (pts2.length === 1) {
+            if ((Math.abs(pts1[0].x - pts2[0].x) < e) && (Math.abs(pts1[0].y - pts2[0].y) < e)) {
+                return pts1[1];
+            } else {
+                return pts1[0];
+            }
         }
     }
 
@@ -1307,15 +1401,21 @@ function drawExampleViz(el, data, error, height, width) {
     // todo: show cones from each starting point, place edges
     // todo: should just hard code for the cone viz
     function drawConeFromSource(srcIdx, tgtIdx) {
-
+        console.log('drawconefromsource');
+        console.log(srcIdx);
+        console.log(tgtIdx);
         data.nodes.forEach(function (n, idx) {
             if (srcIdx === idx) {
                 if (n.hasOwnProperty('cones')) {
                     n.cones.forEach(function (c) {
                         if (c.target === tgtIdx) {
                             c.show = true;
+                            data.edges.forEach(function (e) {
+                                if (e.source === idx && e.target === c.target) {
+                                    e.show = true;
+                                }
+                            })
                         }
-
                     })
                 }
             }
@@ -1664,6 +1764,47 @@ const ConeVisualization = function (params) {
         genericTransportHandler(e, self);
     };
 
+    this.generateSteps = function () {
+        console.log('generate steps');
+        let steps = [];
+        viz.data.nodes.forEach(function (n, srcIdx) {
+            if (n.hasOwnProperty('cones')) {
+                let targets = [];
+                n.cones.forEach(function (c, cIdx) {
+                    let source = srcIdx;
+
+                    targets.push(c.target);
+                    let targetCopy = cloneDeep(targets);
+
+                    let action = function () {
+                        viz.clearCones();
+                        targetCopy.forEach(function (i) {
+                            viz.drawConeFromSource(source, i);
+                        });
+                        console.log(viz.data);
+                        viz.draw();
+                    };
+
+                    if (source === 0 && c.target === 1) {
+
+                    } else {
+                        steps.push(
+                            {
+                                'step': (srcIdx + 1) * (cIdx + 1),
+                                'message': 'Draw cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones. In the illustration, red cones indicate the last approximate edge that can be added from a particular vertex.',
+                                'action': action
+                            });
+                    }
+
+
+                })
+            }
+        });
+        console.log(steps);
+        return steps;
+    };
+
+
     this.state = {
         rewind: "rewindConeedges1",
         backward: "backwardConeedges1",
@@ -1675,12 +1816,14 @@ const ConeVisualization = function (params) {
         viz: viz,
         steps: [
             {
-                'step': 0,
-                'message': 'Draw a double cone from the starting vertex that is defined by the tangent line from the vertex to error disc of the target vertex.',
+                'step': 1,
+                'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
                 'action': function () {
                     viz.clearCones();
                     viz.drawConeFromSource(0, 1);
+                    console.log(viz.data);
                     viz.draw();
+
                 }
             },
             {
@@ -1690,6 +1833,19 @@ const ConeVisualization = function (params) {
                     viz.clearCones();
                     viz.drawConeFromSource(0, 1);
                     viz.drawConeFromSource(0, 2);
+                    console.log(viz.data);
+                    viz.draw();
+
+                }
+            },
+            {
+                'step': 1,
+                'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
+                'action': function () {
+                    viz.clearCones();
+                    viz.drawConeFromSource(0, 1);
+                    viz.drawConeFromSource(0, 2);
+                    viz.drawConeFromSource(0, 3);
                     console.log(viz.data);
                     viz.draw();
 
@@ -1926,6 +2082,7 @@ const ConeVisualization = function (params) {
         ]
     };
 
+    this.state.steps = this.generateSteps();
     this.showFirst();
 
 };
@@ -1988,10 +2145,8 @@ let coneViz = new ConeVisualization({
     h: 500,
     w: 500
 });
-
 coneViz.state.viz.drawDiscsFromSource(0);
 coneViz.state.viz.draw();
-
 
 //let demo = drawExampleViz("#vizDemo", cloneDeep(demoData), error, 750, 1000);
 //demo.draw();
