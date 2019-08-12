@@ -410,19 +410,20 @@ function drawExampleViz(el, data, error, height, width) {
                             }];
                         }
                     } else {
-                        console.log('plane');
-                        console.log(displayGeom[0]);
+                        //console.log('plane');
+                        //console.log(displayGeom[0]);
+                        // don't show planes
                         if (node.hasOwnProperty('cones')) {
                             node.cones.push({
                                 "target": j,
-                                "geom": displayGeom[0],
+                                "geom": [],
                                 "intx": true,
                                 "coneInt": []
                             });
                         } else {
                             node.cones = [{
                                 "target": j,
-                                "geom": displayGeom[0],
+                                "geom": [],
                                 "intx": true,
                                 "coneInt": []
                             }];
@@ -662,7 +663,7 @@ function drawExampleViz(el, data, error, height, width) {
                 {x: xmax, y: ymin},
                 {x: xmin, y: ymin}];
 
-            polygon.push([plane, plane]);
+            polygon = ([plane, plane]);
 
             let planeQuery = IntersectionQuery.pointInPolygon({x: xmax / 2, y: ymax / 2}, plane);
             if (!planeQuery) {
@@ -1913,7 +1914,11 @@ const DemoVisualization = function (params) {
                         viz.hideApproximation();
 
                         targetCopy.forEach(function (i) {
-                            viz.drawConeFromSource(source, i);
+                            if (source === 0 && i === 1) {
+
+                            } else {
+                                viz.drawConeFromSource(source, i);
+                            }
                         });
                         console.log(viz.data);
                         viz.draw();

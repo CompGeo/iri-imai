@@ -44,12 +44,15 @@
             </p>
 
             <p>
-                The <a href="https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm">Ramer-Douglas-Peuker algorithm</a>
+                The <a href="https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm">Ramer-Douglas-Peuker
+                algorithm</a>
                 is commonly used for this task.</p>
             <p>
                 Also known as the iterative end-point fit algorithm, it works by
-                recursively processing the line segment between endpoints, dividing the segment until all original points are
-                with the error distance from the approximating segments. The expected running time of the algorithm is &Theta;(n log n),
+                recursively processing the line segment between endpoints, dividing the segment until all original
+                points are
+                with the error distance from the approximating segments. The expected running time of the algorithm is
+                &Theta;(n log n),
                 with a worst case of O(n<sup>2</sup>).
             </p>
             <p>
@@ -94,23 +97,30 @@
         <h3>The Iri-Imai Algorithm for min-#</h3>
         <div class="section-content">
             <p>
-                The Iri-Imai Algorithm for minimizing the number of line segments in an approximation, given error &epsilon;,
-                works by first constructing a <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">DAG (Directed Acyclic Graph)</a>, <em>G</em>, that
+                The Iri-Imai Algorithm for minimizing the number of line segments in an approximation, given error
+                &epsilon;,
+                works by first constructing a <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">DAG
+                (Directed Acyclic Graph)</a>, <em>G</em>, that
                 contains all possible edges between vertices in the input polygonal chain. (n<sup>2</sup> edges).
             </p>
             <p>
-                The weight of each edge is set to the number of vertices from the original chain that would be skipped by following the edge.
+                The weight of each edge is set to the number of vertices from the original chain that would be skipped
+                by following the edge.
             </p>
             <p>
-                For each edge, the distance between the edge and each vertex it skips is compared with &epsilon;. If all of the skipped vertices are
-                within distance &epsilon; of the edge, the edge is kept as a potential approximating edge. Otherwise, the edge is discarded.
+                For each edge, the distance between the edge and each vertex it skips is compared with &epsilon;. If all
+                of the skipped vertices are
+                within distance &epsilon; of the edge, the edge is kept as a potential approximating edge. Otherwise,
+                the edge is discarded.
             </p>
             <p>
-                On this reduced set of edges, find the maximum weight path between the start and end points. The path is the simplified version of
+                On this reduced set of edges, find the maximum weight path between the start and end points. The path is
+                the simplified version of
                 the input chain. This algorithm has a time complexity of O(n<sup>3</sup>).
             </p>
             <p>
-                The illustration below steps through the process, but simplifies the path finding step by using a breadth-first search to find the minimum length path.
+                The illustration below steps through the process, but simplifies the path finding step by using a
+                breadth-first search to find the minimum length path.
             </p>
             <div class="row">
                 <div id="vizDAG" class="col-6">
@@ -165,12 +175,16 @@
                 described in Iri and Imai's algorithm can be constructed in an asymptotically faster way.
             </p>
             <p>
-                The idea of the parallel strip is to buffer the line containing a potential approximating edge by &epsilon;. If all of the points
-                that would be approximated by the edge lie within the parallel strip, then the edge is kept. Toussaint's first paper utilizing
-                the parallel strip used this concept in an algorithm that solves the min-# problem in O(n<sup>2</sup> log n) time.
+                The idea of the parallel strip is to buffer the line containing a potential approximating edge by
+                &epsilon;. If all of the points
+                that would be approximated by the edge lie within the parallel strip, then the edge is kept. Toussaint's
+                first paper utilizing
+                the parallel strip used this concept in an algorithm that solves the min-# problem in O(n<sup>2</sup>
+                log n) time.
             </p>
             <p>
-                In the current paper, the authors show that the same criterion is met by buffering the vertices (creating error discs) that would be skipped by
+                In the current paper, the authors show that the same criterion is met by buffering the vertices
+                (creating error discs) that would be skipped by
                 an approximating edge. Using this new formulation, they find a new way to construct <em>G</em>,
                 yielding an
                 overall
@@ -178,7 +192,8 @@
             </p>
             <p>
                 Interacting with the visualization below, it becomes clear that the error disc and parallel strip criteria are equivalent in terms
-                of determining distance between a vertex and a potential approximating edge. Note that as a disc touches the approximating
+                of determining distance between a vertex and a potential approximating edge. Note that as a disc touches
+                the approximating
                 segment, the parallel strip touches the vertex associated with that disc.
             </p>
             <div class="row">
@@ -223,13 +238,16 @@
         </h3>
         <div class="section-content">
             <p>
-                The new formulation of the parallel strip criterion, as 'discs' of radius &epsilon; centered on the vertices
+                The new formulation of the parallel strip criterion, as 'discs' of radius &epsilon; centered on the
+                vertices
                 of the polygonal chain, allows a way to construct <em>G</em> that visits each
                 vertex, rather than each of n<sup>2</sup> edges.
             </p>
             <p>
-                Each 'double wedge' is defined by a vertex, V<sub>i</sub>, and the error disc of one of the following vertices, V<sub>i + j</sub>. Each is constructed
-                by finding the 2 lines that go through V<sub>i</sub> that are tangent to the error disc. The double wedge is the region
+                Each 'double wedge' is defined by a vertex, V<sub>i</sub>, and the error disc of one of the following
+                vertices, V<sub>i + j</sub>. Each is constructed
+                by finding the 2 lines that go through V<sub>i</sub> that are tangent to the error disc. The double
+                wedge is the region
                 inscribed by those 2 lines.
             </p>
 
@@ -238,22 +256,27 @@
 
                 For every vertex, V<sub>i</sub> to V<sub>n - 1</sub>:
                 <ol>
-                <li>
-                    Initialize a variable that will maintain the intersection of all generated wedges (IW). Starting value is the 'open cone' (the plane).
-                </li>
+                    <li>
+                        Initialize a variable that will maintain the intersection of all generated wedges (IW). Starting
+                        value is the 'open cone' (the plane).
+                    </li>
                     <li>
                         Iterate over the rest of the vertices in the polygonal chain. (j=i + 1 to n)
 
-                    <ol type="a">
-                    <li>
-                        If V<sub>j</sub> is inside the intersection of wedges (IW), then add the edge between V<sub>i</sub> and V<sub>j</sub> to <em>G</em>. Add an edge weight equal to the number of 'skipped' vertices (j - i - 1). Notice that this will always include the original
-                        edges of the polygonal chain. If the vertex is not inside, break the inner loop and return to step 1 for V<sub>i + 1</sub>.
-                    </li>
-                    <li>
-                        Update the value of IW to the intersection of the current IW with the wedge defined by V<sub>i</sub> and the error disc of V<sub>j</sub>. If this intersection results in a null region,
-                        break the inner loop and return to step 1 for V<sub>i + 1</sub>
-                    </li>
-                    </ol>
+                        <ol type="a">
+                            <li>
+                                If V<sub>j</sub> is inside the intersection of wedges (IW), then add the edge between
+                                V<sub>i</sub> and V<sub>j</sub> to <em>G</em>. Add an edge weight equal to the number of
+                                'skipped' vertices (j - i - 1). Notice that this will always include the original
+                                edges of the polygonal chain. If the vertex is not inside, break the inner loop and
+                                return to step 1 for V<sub>i + 1</sub>.
+                            </li>
+                            <li>
+                                Update the value of IW to the intersection of the current IW with the wedge defined by V<sub>i</sub>
+                                and the error disc of V<sub>j</sub>. If this intersection results in a null region,
+                                break the inner loop and return to step 1 for V<sub>i + 1</sub>
+                            </li>
+                        </ol>
                     </li>
                 </ol>
             </div>
@@ -265,7 +288,8 @@
                         <div class="card-body">
 
                             <div class="card-title">
-                                <h5>This visualization illustrates how error discs and double cones can be used to construct <em>G</em>.</h5>
+                                <h5>This visualization illustrates how error discs and double cones can be used to
+                                    construct <em>G</em>.</h5>
                             </div>
                             <div class="card-text">
                                 <div class="controls" style="padding: 1em;">
@@ -298,14 +322,16 @@
         <h3>The Simplified Polygonal Chain</h3>
         <div class="section-content">
             <p>
-                Once <em>G</em> has been constructed as above, Toussaint and Eu use forward <a href="https://en.wikipedia.org/wiki/Dynamic_programming">dynamic programming</a>
+                Once <em>G</em> has been constructed as above, Toussaint and Eu use forward <a
+                    href="https://en.wikipedia.org/wiki/Dynamic_programming">dynamic programming</a>
                 to find the maximum weight path in O(n<sup>2</sup>) time.
             </p>
             <p>
                 Here, as above, we instead use a breadth-first search to find the minimum length path.
             </p>
             <p>
-                To open an interactive demo of the algorithm, where you can try out your own points and error values, click the button below:
+                To open an interactive demo of the algorithm, where you can try out your own points and error values,
+                click the button below:
             </p>
             <button class="btn btn-outline-primary" data-toggle="modal" data-target="#demoModal">Start the Demo</button>
         </div>
@@ -416,9 +442,9 @@
 
             </div>
 
-<!--
-            insert more citations from reading list, with brief description of results
--->
+            <!--
+                        insert more citations from reading list, with brief description of results
+            -->
         </div>
     </div>
 
