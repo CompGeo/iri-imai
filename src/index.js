@@ -664,7 +664,7 @@ function drawExampleViz(el, data, error, height, width) {
 
             polygon.push([plane, plane]);
 
-            let planeQuery = IntersectionQuery.pointInPolygon({x: 50, y: 50}, plane);
+            let planeQuery = IntersectionQuery.pointInPolygon({x: xmax / 2, y: ymax / 2}, plane);
             if (!planeQuery) {
                 console.log('plane query');
                 throw new Error('point should be in polygon');
@@ -888,14 +888,14 @@ function drawExampleViz(el, data, error, height, width) {
                         return yScale(d.coordinates.y);
                     })
                     .attr("r", function (d) {
-                        return d.disc ? d.epsilon : 0;
+                        return d.disc ? xScale(d.epsilon) : 0;
                     })
                     .style("fill", "url(#lightstripe)")
                     .style("stroke", "#000")
                     .style("strokewidth", "1"),
                 update => update
                     .attr("r", function (d) {
-                        return d.disc ? d.epsilon : 0;
+                        return d.disc ? xScale(d.epsilon) : 0;
                     }),
                 exit => exit
                     .attr("fill", "brown")
@@ -948,7 +948,7 @@ function drawExampleViz(el, data, error, height, width) {
                     })
                     .style("stroke-width", function (d) {
                         if (d.strip) {
-                            return 2 * d.epsilon;
+                            return 2 * xScale(d.epsilon);
                         } else {
                             return 1;
                         }
@@ -963,7 +963,7 @@ function drawExampleViz(el, data, error, height, width) {
                 update => update
                     .style("stroke-width", function (d) {
                         if (d.strip) {
-                            return 2 * d.epsilon;
+                            return 2 * xScale(d.epsilon);
                         } else {
                             return 1;
                         }
@@ -1268,7 +1268,7 @@ function drawExampleViz(el, data, error, height, width) {
             //console.log('inv error');
             //console.log(xScale.invert(err));
         let d = euclideanDistance(p1, p2);
-        let eps = xScale.invert(err);
+        let eps = err;
         if (eps >= d) {
             throw new Error('circles are too close!');
         }
@@ -1778,6 +1778,8 @@ const ConeVisualization = function (params) {
 
                     let action = function () {
                         viz.clearCones();
+                        viz.hideApproximation();
+
                         targetCopy.forEach(function (i) {
                             viz.drawConeFromSource(source, i);
                         });
@@ -1791,7 +1793,11 @@ const ConeVisualization = function (params) {
                         steps.push(
                             {
                                 'step': (srcIdx + 1) * (cIdx + 1),
-                                'message': 'Draw cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones. In the illustration, red cones indicate the last approximate edge that can be added from a particular vertex.',
+                                'message': 'Draw cones from the starting vertex to each successive error disc. ' +
+                                    'Keep a DAG edge (dotted blue line) if all the vertices in between the source vertex and target vertex ' +
+                                    'lie in the intersection of all the cones. In the illustration, red cones indicate ' +
+                                    'that no more edges can be added from a particular vertex. For clarity, ' +
+                                    'DAG edges found from prior vertices are hidden here.',
                                 'action': action
                             });
                     }
@@ -1800,7 +1806,27 @@ const ConeVisualization = function (params) {
                 })
             }
         });
-        console.log(steps);
+
+        let action = function () {
+            viz.clearCones();
+            viz.showApproximation();
+            viz.draw();
+        };
+        let stepVal = steps.length;
+        steps.push(
+            {
+                'step': stepVal,
+                'message': 'Finally, you have a DAG which is comprised of all valid potential approximate edges.',
+                'action': action
+            });
+
+        steps.push(
+            {
+                'step': stepVal + 1,
+                'message': 'Calculate the shortest path using the remaining edges. This example uses a breadth first search to find the shortest path. The result (in green) is the simplified polygonal chain that minimizes the number of edges with a given error \u03B5.',
+                'action': viz.getShortestPath
+            });
+
         return steps;
     };
 
@@ -1814,272 +1840,7 @@ const ConeVisualization = function (params) {
         stepIndex: 0,
         messageEl: "message-cone-1",
         viz: viz,
-        steps: [
-            {
-                'step': 1,
-                'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(0, 1);
-                    console.log(viz.data);
-                    viz.draw();
-
-                }
-            },
-            {
-                'step': 1,
-                'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(0, 1);
-                    viz.drawConeFromSource(0, 2);
-                    console.log(viz.data);
-                    viz.draw();
-
-                }
-            },
-            {
-                'step': 1,
-                'message': 'Keep drawing cones from the starting vertex to each successive error disc. Keep an edge if all the vertices in between the source vertex and target vertex lie in the intersection of all the cones.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(0, 1);
-                    viz.drawConeFromSource(0, 2);
-                    viz.drawConeFromSource(0, 3);
-                    console.log(viz.data);
-                    viz.draw();
-
-                }
-            },
-            {
-                'step': 3,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(1, 2);
-                    viz.draw();
-                }
-            },
-            {
-                'step': 3,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(1, 2);
-                    viz.drawConeFromSource(1, 3);
-                    viz.draw();
-
-
-                }
-            },
-            {
-                'step': 3,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(1, 2);
-                    viz.drawConeFromSource(1, 3);
-                    viz.drawConeFromSource(1, 4);
-
-                }
-            },
-            {
-                'step': 4,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(2, 3);
-
-
-
-                }
-            },
-            {
-                'step': 4,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(2, 3);
-                    viz.drawConeFromSource(2, 4);
-
-
-
-                }
-            },
-            {
-                'step': 5,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(2, 3);
-                    viz.drawConeFromSource(2, 4);
-                    viz.drawConeFromSource(2, 5);
-
-
-
-                }
-            },
-            {
-                'step': 5,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(2, 3);
-                    viz.drawConeFromSource(2, 4);
-                    viz.drawConeFromSource(2, 5);
-                    viz.drawConeFromSource(2, 6);
-
-                }
-            },
-            {
-                'step': 6,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(3, 4);
-
-
-                }
-            },
-            {
-                'step': 6,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(3, 4);
-                    viz.drawConeFromSource(3, 5);
-
-
-                }
-            },
-            {
-                'step': 6,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(3, 4);
-                    viz.drawConeFromSource(3, 5);
-                    viz.drawConeFromSource(3, 6);
-
-
-                }
-            },
-            {
-                'step': 6,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(3, 4);
-                    viz.drawConeFromSource(3, 5);
-                    viz.drawConeFromSource(3, 6);
-                    viz.drawConeFromSource(3, 7);
-
-
-                }
-            },
-            {
-                'step': 7,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(4, 5);
-
-
-                }
-            },
-            {
-                'step': 8,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(4, 5);
-                    viz.drawConeFromSource(4, 6);
-
-                }
-            },
-            {
-                'step': 8,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(4, 5);
-                    viz.drawConeFromSource(4, 6);
-                    viz.drawConeFromSource(4, 7);
-
-                }
-            },
-            {
-                'step': 8,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(4, 5);
-                    viz.drawConeFromSource(4, 6);
-                    viz.drawConeFromSource(4, 7);
-                    viz.drawConeFromSource(4, 8);
-
-
-                }
-            },
-            {
-                'step': 9,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(5, 6);
-
-                }
-            },
-            {
-                'step': 9,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(5, 6);
-                    viz.drawConeFromSource(5, 7);
-
-                }
-            },
-            {
-                'step': 9,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(5, 6);
-                    viz.drawConeFromSource(5, 7);
-                    viz.drawConeFromSource(5, 8);
-
-                }
-            },
-            {
-                'step': 10,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(6, 7);
-
-                }
-            },
-            {
-                'step': 10,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(6, 7);
-                    viz.drawConeFromSource(6, 8);
-
-                }
-            },
-            {
-                'step': 10,
-                'message': 'If any of the successive points lies outside the intersection of cones, or if the intersection of cones is null, move on to the next vertex.',
-                'action': function () {
-                    viz.clearCones();
-                    viz.drawConeFromSource(7, 8);
-
-                }
-            }
-        ]
+        steps: []
     };
 
     this.state.steps = this.generateSteps();
@@ -2088,6 +1849,136 @@ const ConeVisualization = function (params) {
 };
 
 
+const DemoVisualization = function (params) {
+
+    let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
+    viz.findEdgesToussaint();
+    viz.draw();
+
+    let self = this;
+
+    this.getStep = function (idx) {
+        self.state.stepIndex = idx;
+        viz.resetShortestPath();
+        return showStep(self.state);
+    };
+
+    this.hasNext = function () {
+        return hasNext(self.state);
+    };
+
+    this.hasPrev = function () {
+        return hasPrev(self.state);
+    };
+
+    this.getNext = function () {
+        let nextIdx = incrStepIndex(self.state);
+        setControlState(self.state);
+        return self.getStep(nextIdx);
+    };
+
+    this.getPrev = function () {
+        let prevIdx = decrStepIndex(self.state);
+        setControlState(self.state);
+
+        return self.getStep(prevIdx);
+    };
+
+    this.showFirst = function () {
+        viz.resetShortestPath();
+        self.state.stepIndex = 0;
+        setControlState(self.state);
+        return showStep(self.state);
+    };
+
+
+    this.clickHandler = function (e) {
+        genericTransportHandler(e, self);
+    };
+
+    this.generateSteps = function () {
+        console.log('generate steps');
+        let steps = [];
+        viz.data.nodes.forEach(function (n, srcIdx) {
+            if (n.hasOwnProperty('cones')) {
+                let targets = [];
+                n.cones.forEach(function (c, cIdx) {
+                    let source = srcIdx;
+
+                    targets.push(c.target);
+                    let targetCopy = cloneDeep(targets);
+
+                    let action = function () {
+                        viz.clearCones();
+                        viz.hideApproximation();
+
+                        targetCopy.forEach(function (i) {
+                            viz.drawConeFromSource(source, i);
+                        });
+                        console.log(viz.data);
+                        viz.draw();
+                    };
+
+                    if (source === 0 && c.target === 1) {
+
+                    } else {
+                        steps.push(
+                            {
+                                'step': (srcIdx + 1) * (cIdx + 1),
+                                'message': 'Draw cones from the starting vertex to each successive error disc. ' +
+                                    'Keep a DAG edge (dotted blue line) if all the vertices in between the source vertex and target vertex ' +
+                                    'lie in the intersection of all the cones. In the illustration, red cones indicate ' +
+                                    'that no more edges can be added from a particular vertex. For clarity, ' +
+                                    'DAG edges found from prior vertices are hidden here.',
+                                'action': action
+                            });
+                    }
+
+
+                })
+            }
+        });
+
+        let action = function () {
+            viz.clearCones();
+            viz.showApproximation();
+            viz.draw();
+        };
+        let stepVal = steps.length;
+        steps.push(
+            {
+                'step': stepVal,
+                'message': 'Finally, you have a DAG which is comprised of all valid potential approximate edges.',
+                'action': action
+            });
+
+        steps.push(
+            {
+                'step': stepVal + 1,
+                'message': 'Calculate the shortest path using the remaining edges. This example uses a breadth first search to find the shortest path. The result (in green) is the simplified polygonal chain that minimizes the number of edges with a given error \u03B5.',
+                'action': viz.getShortestPath
+            });
+
+        return steps;
+    };
+
+
+    this.state = {
+        rewind: "rewindDemoedges1",
+        backward: "backwardDemoedges1",
+        forward: "forwardDemoedges1",
+        fastforward: "ffDemoedges1",
+        allDisabled: false,
+        stepIndex: 0,
+        messageEl: "message-demo-1",
+        viz: viz,
+        steps: []
+    };
+
+    this.state.steps = this.generateSteps();
+    this.showFirst();
+
+};
 const demoData = {
     "nodes": [
         {"coordinates": {"x": 30, "y": 70}},
@@ -2129,7 +2020,7 @@ parallel strip viz
 let stripViz = parallelStripVisualization({
     vizEl: "#vizStrip",
     data: cloneDeep(demoData),
-    error: 10,
+    error: 5,
     h: 500,
     w: 500
 });
@@ -2141,15 +2032,24 @@ cones viz
 let coneViz = new ConeVisualization({
     vizEl: "#vizCones",
     data: cloneDeep(demoData),
-    error: 27,
+    error: 5,
     h: 500,
     w: 500
 });
 coneViz.state.viz.drawDiscsFromSource(0);
 coneViz.state.viz.draw();
 
-//let demo = drawExampleViz("#vizDemo", cloneDeep(demoData), error, 750, 1000);
-//demo.draw();
+
+let demoViz = new DemoVisualization({
+    vizEl: "#vizDemo",
+    data: cloneDeep(demoData),
+    error: 5,
+    h: 750,
+    w: 1000
+});
+demoViz.state.viz.drawDiscsFromSource(0);
+demoViz.state.viz.draw();
+
 
 
 /*
@@ -2157,8 +2057,8 @@ Event handlers
  */
 
 
-
 document.addEventListener('click', function (e) {
     dagViz.clickHandler(e);
     coneViz.clickHandler(e);
+    demoViz.clickHandler(e);
 });
