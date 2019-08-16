@@ -452,45 +452,67 @@
     <!-- Modal -->
     <div class="modal fade" id="demoModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
          aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-xl modal-dialog-centered" role="document" style="width:1250px;">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Interactive Demo</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <div class="container">
-                        <div id="vizDemo">
+                    <div class="container-fluid">
+                        <div class="row">
+                        <div id="vizDemo" class="col-7">
+                        </div>
+                        <div class="col-5">
+                            <div class="card">
+                                <div class="card-body">
+
+                                    <div class="card-title">
+                                    </div>
+                                    <div class="card-text">
+                                        <div class="controls" style="padding: 1em;">
+
+                                            <div>
+                                                <form onsubmit="return false;">
+                                                    <div class="form-group">
+
+                                                    <button class="btn btn-outline-primary" id="rewindDemoedges1">&lt;&lt;
+                                                    </button>
+                                                    <button class="btn btn-outline-primary" id="backwardDemoedges1">previous step
+                                                    </button>
+                                                    <button class="btn btn-outline-primary" id="forwardDemoedges1">next step
+                                                    </button>
+                                                    <button class="btn btn-outline-primary" id="ffDemoedges1">&gt;&gt;
+                                                    </button>
+                                                    </div>
+
+                                                    <button class="btn btn-outline-primary" id="clearDemoNodes">clear all points </button>
+
+                                                        <div class="form-group">
+                                                        <label for="epsilonRange_demo">&epsilon;: <span id="demo-epsilon">0</span> </label>
+                                                        <input type="range" class="form-control-range" step="0.5" min="1" max="7"
+                                                               id="epsilonRange_demo" disabled="disabled">
+                                                    </div>
+
+                                                </form>
+
+                                            </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <div id="message-demo-1" style=""></div>
+
+
+                                    </div>
+                                    <div>
+
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                </div>
-                <div class="container-fluid" style="padding:1em;">
-                    <div class="row">
-                    <div class="col-6">
-                        <form>
-                            <div class="form-group">
-                                <label for="epsilonRange_demo">&epsilon;: <span id="demo-epsilon">0</span> </label>
-                                <input type="range" class="form-control-range" step="0.5" min="1" max="7"
-                                       id="epsilonRange_demo">
-                            </div>
-                        </form>
-                        <div id="message-demo-1" style=""></div>
-                    </div>
-
-                    <div class="controls col-5" style="padding: 1em;">
-                        <button class="btn btn-outline-primary" id="rewindDemoedges1">&lt;&lt;
-                        </button>
-                        <button class="btn btn-outline-primary" id="backwardDemoedges1">previous step
-                        </button>
-                        <button class="btn btn-outline-primary" id="forwardDemoedges1">next step
-                        </button>
-                        <button class="btn btn-outline-primary" id="ffDemoedges1">&gt;&gt;
-                        </button>
-                    </div>
-                    <button type="button" class="btn btn-secondary col-1" data-dismiss="modal">Close</button>
                 </div>
                 </div>
             </div>

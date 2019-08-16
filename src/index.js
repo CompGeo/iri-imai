@@ -601,7 +601,7 @@ function drawExampleViz(el, data, error, height, width) {
         let pe1 = getEdgePointsForLine(coneInfo.source, coneInfo.tanPts[0]);
         let pe2 = getEdgePointsForLine(coneInfo.source, coneInfo.tanPts[1]);
 
-        console.log(pe1);
+        //console.log(pe1);
         let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
         let forward = [];
         let backward = [];
@@ -619,7 +619,7 @@ function drawExampleViz(el, data, error, height, width) {
         let a = (dotProduct(coneInfo.source, forward[0], coneInfo.validator)) < 0 ? -1 : 1;
         let b = (dotProduct(forward[0], forward[1], coneInfo.validator)) < 0 ? -1 : 1;
         let c = (dotProduct(forward[1], coneInfo.source, coneInfo.validator)) < 0 ? -1 : 1;
-        console.log(a + b + c);
+        //console.log(a + b + c);
         if (((a + b + c) === 3) || ((a + b + c) === -3)) {
             forw_sorted = forward;
         } else {
@@ -1010,9 +1010,9 @@ function drawExampleViz(el, data, error, height, width) {
                            forwCorner2.x = xmax;
                            forwCorner2.y = forwCorner.y;
                        }*/
-            console.log('forward cone');
-            console.log(forward);
-            console.log(forwCorner);
+            //console.log('forward cone');
+            //console.log(forward);
+            //console.log(forwCorner);
 
             // need to maintain ccw winding order, pair up points properly
             let forw_poly = [{x: coneInfo.source.x, y: coneInfo.source.y},
@@ -1029,10 +1029,10 @@ function drawExampleViz(el, data, error, height, width) {
             forw_poly.push({x: forward[1].x, y: forward[1].y});
             forw_poly.push({x: coneInfo.source.x, y: coneInfo.source.y});
 
-            console.log('args');
-            console.log([coneInfo.validator, forw_poly]);
+            //console.log('args');
+            //console.log([coneInfo.validator, forw_poly]);
             let forwQuery = IntersectionQuery.pointInPolygon(coneInfo.validator, forw_poly);
-            console.log(forwQuery);
+            //console.log(forwQuery);
             if (!forwQuery) {
                 throw new Error('point should be in polygon');
             }
@@ -1079,10 +1079,10 @@ function drawExampleViz(el, data, error, height, width) {
             let extended = getEdgePointsForLine(coneInfo.source, coneInfo.validator);
             let testPt = getOppositePoint(coneInfo.source, coneInfo.validator, extended);
 
-            console.log('back args');
-            console.log([testPt, back_poly]);
+            //console.log('back args');
+            //console.log([testPt, back_poly]);
             let backQuery = IntersectionQuery.pointInPolygon(testPt, back_poly);
-            console.log(backQuery);
+            //console.log(backQuery);
             if (!backQuery) {
                 throw new Error('point should be in polygon');
             }
@@ -1163,18 +1163,22 @@ function drawExampleViz(el, data, error, height, width) {
         let vertices = vertexContainer
             .selectAll("circle")
             .data(data.nodes)
-            .enter()
-            .append("circle")
-            .attr("cx", function (d) {
-                return xScale(d.coordinates.x);
-            })
-            .attr("cy", function (d) {
-                return yScale(d.coordinates.y);
-            })
-            .attr("r", 5)
-            .style("fill", function (d) {
-                return "#FF0000";
-            });
+            .join(
+                enter => enter.append("circle")
+                    .attr("cx", function (d) {
+                        return xScale(d.coordinates.x);
+                    })
+                    .attr("cy", function (d) {
+                        return yScale(d.coordinates.y);
+                    })
+                    .attr("r", 5)
+                    .style("fill", function (d) {
+                        return "#FF0000";
+                    }),
+                update => update
+                    .attr("marker-end", "url(#arrow)"),
+                exit => exit.remove()
+            );
 
         updateErrorDiscs();
 
@@ -2083,7 +2087,7 @@ const ConeVisualization = function (params) {
     };
 
     this.generateSteps = function () {
-        console.log('generate steps');
+        //console.log('generate steps');
         let steps = [];
         viz.data.nodes.forEach(function (n, srcIdx) {
             if (n.hasOwnProperty('cones')) {
@@ -2101,7 +2105,7 @@ const ConeVisualization = function (params) {
                         targetCopy.forEach(function (i) {
                             viz.drawConeFromSource(source, i);
                         });
-                        console.log(viz.data);
+                        // console.log(viz.data);
                         viz.draw();
                     };
 
@@ -2228,22 +2232,30 @@ const DemoVisualization = function (params) {
 
     ["input"].map(ev => demorange.addEventListener(ev, updateDiscs, false));
 
+    let demoClear = document.getElementById('clearDemoNodes');
+    ["click"].map(ev => demoClear.addEventListener(ev, viz.clearNodes, false));
+
 
     this.clickHandler = function (e) {
         genericTransportHandler(e, self);
     };
 
     this.generateSteps = function () {
+        let currentStepsLen = this.state.steps.length;
         console.log('generate demo steps');
         viz.findEdgesToussaint();
         let steps = [];
         viz.data.nodes.forEach(function (n, srcIdx) {
             if (n.hasOwnProperty('cones')) {
+                console.log('srcidx');
+                console.log(srcIdx);
                 let targets = [];
                 n.cones.forEach(function (c, cIdx) {
                     let source = srcIdx;
 
                     targets.push(c.target);
+                    console.log('cone target');
+                    console.log(c.target);
                     let targetCopy = cloneDeep(targets);
 
                     let action = function () {
@@ -2251,13 +2263,14 @@ const DemoVisualization = function (params) {
                         viz.hideApproximation();
 
                         targetCopy.forEach(function (i) {
-                            if (source === 0 && i === 1) {
+                            if (targetCopy.length === 1 && source === 0 && i === 1) {
 
                             } else {
+                                console.log('drawing ' + source + ' to ' + i);
                                 viz.drawConeFromSource(source, i);
                             }
                         });
-                        console.log(viz.data);
+                        // console.log(viz.data);
                         viz.draw();
                     };
 
@@ -2266,7 +2279,7 @@ const DemoVisualization = function (params) {
                     } else {
                         steps.push(
                             {
-                                'step': (srcIdx + 1) * (cIdx + 1),
+                                'step': (srcIdx + 1) * (cIdx + 1) + currentStepsLen,
                                 'message': 'Draw cones from the starting vertex to each successive error disc. ' +
                                     'Keep a DAG edge (dotted blue line) if all the vertices in between the source vertex and target vertex ' +
                                     'lie in the intersection of all the cones. In the illustration, red cones indicate ' +
@@ -2320,17 +2333,25 @@ const DemoVisualization = function (params) {
     this.state.steps = [];
     let clickAction = function () {
         viz.enableInput();
+        viz.hideDiscs();
+        demoClear.disabled = false;
+        demorange.disabled = true;
+
     };
 
     let epsilonAction = function () {
+        demoClear.disabled = true;
+        demorange.disabled = false;
         viz.disableInput();
 
         viz.drawDiscsFromSource(0);
-        console.log(viz.data);
+        //console.log(viz.data);
         viz.draw();
     };
 
     let generateConesAction = function () {
+        demorange.disabled = true;
+
         self.state.steps = self.state.steps.concat(self.generateSteps());
         console.log('state');
         console.log(self.state);
@@ -2346,12 +2367,12 @@ const DemoVisualization = function (params) {
         },
         {
             'step': 1,
-            'message': 'Select an epsilon value for your simplification.',
+            'message': 'Use the slider to select an epsilon value for your simplification.',
             'action': epsilonAction
         },
         {
-            'step': 1,
-            'message': 'Click next to step through cones.',
+            'step': 2,
+            'message': 'Click next to step through edge selection.',
             'action': generateConesAction
         }];
 
@@ -2424,8 +2445,8 @@ let demoViz = new DemoVisualization({
     vizEl: "#vizDemo",
     data: {"nodes": [], "edges": []},
     error: 5,
-    h: 750,
-    w: 750
+    h: 600,
+    w: 600
 });
 demoViz.state.viz.drawDiscsFromSource(0);
 demoViz.state.viz.draw();
