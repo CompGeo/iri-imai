@@ -7,6 +7,7 @@ import "@babel/polyfill";
 
 
 function drawExampleViz(el, data, error, height, width) {
+
     const ymin = 0;
     const xmin = 0;
     const ymax = 100;
@@ -76,6 +77,43 @@ function drawExampleViz(el, data, error, height, width) {
     let stripContainer = vizContainer.append("g");
     let edgeContainer = vizContainer.append("g");
     let vertexContainer = vizContainer.append("g");
+
+    function mousedown() {
+        let point = d3.mouse(this);
+        let node = {"coordinates": {"x": xScale.invert(point[0]), "y": yScale.invert(point[1])}};
+        let prevLen = data.nodes.length;
+        data.nodes.push(node);
+
+        // add edges
+        if (data.nodes.length > 1) {
+            let test = {"source": prevLen - 1, "target": prevLen};
+            let match = data.edges.filter(function (e) {
+                return e.source === test.source && e.target === test.target;
+            });
+            if (match.length === 0) {
+                data.edges.push(test);
+            }
+        }
+
+        drawGraph();
+    }
+
+    function enableInput() {
+        svg.on('click', mousedown);
+    }
+
+    function disableInput() {
+        initializeFlags();
+        svg.on('click', null);
+    }
+
+    function clearNodes() {
+        data = {
+            "nodes": [],
+            "edges": []
+        };
+        drawGraph();
+    }
 
     function initializeFlags() {
         data.nodes.forEach(function (e) {
@@ -346,6 +384,13 @@ function drawExampleViz(el, data, error, height, width) {
     }
 
     function findEdgesToussaint() {
+
+        // clear any previous cone values
+        data.nodes.forEach(function (node) {
+            if (node.hasOwnProperty('cones')) {
+                node.cones = [];
+            }
+        });
         const size = data.nodes.length;
 
         data.nodes.forEach(function (node, sourceIdx) {
@@ -501,6 +546,7 @@ function drawExampleViz(el, data, error, height, width) {
             points = getDiscTangentPoints(p1, p2, node2.epsilon);
         } catch (e) {
             console.log('dont draw a cone');
+            console.log(e);
             // one error disc intersects another
             doubleCone = false;
         }
@@ -675,6 +721,7 @@ function drawExampleViz(el, data, error, height, width) {
             let pe1 = getEdgePointsForLine(coneInfo.source, coneInfo.tanPts[0]);
             let pe2 = getEdgePointsForLine(coneInfo.source, coneInfo.tanPts[1]);
 
+            let guideLine = getEdgePointsForLine(coneInfo.source, coneInfo.validator);
 
             let ex_points = [pe1[0], pe1[1], pe2[0], pe2[1]];
             let forward = [];
@@ -690,41 +737,295 @@ function drawExampleViz(el, data, error, height, width) {
                 }
             });
 
+            let forwGuide = null;
+            let backGuide = null;
+            if (pointIsOn(coneInfo.source, guideLine[0], coneInfo.validator)) {
+                forwGuide = guideLine[0];
+                backGuide = guideLine[1];
+            } else {
+                forwGuide = guideLine[1];
+                backGuide = guideLine[0];
+            }
+
+            let getFacingEdge = function (guidePt) {
+                let facingEdge = '';
+                if (guidePt.x === xmin) {
+                    facingEdge = 'left';
+                } else if (guidePt.x === xmax) {
+                    facingEdge = 'right';
+                } else if (guidePt.y === ymax) {
+                    facingEdge = 'top';
+                } else if (guidePt.y === ymin) {
+                    facingEdge = 'bottom';
+                }
+                return facingEdge;
+            };
+
+            let forwEdge = getFacingEdge(forwGuide);
+            let backEdge = getFacingEdge(backGuide);
+
             //let wedges = getWedges(coneInfo);
+
+
+
+            let forwCorner = {};
+            let forwCorner2 = {};
+
+            if (forwEdge === 'top') {
+                // contains no corners.
+                if (forward[0].y === ymax && forward[1].y === ymax) {
+                    // add no corners
+                } else if (forward[0].y === ymax) {
+                    if (forward[1].x === xmax) {
+                        // include topright corner
+                        forwCorner = {x: xmax, y: ymax};
+                    } else if (forward[1].x === xmin) {
+                        // include topleft
+                        forwCorner = {x: xmin, y: ymax};
+                    }
+
+                } else if (forward[1].y === ymax) {
+                    if (forward[0].x === xmax) {
+                        // include topright corner
+                        forwCorner = {x: xmax, y: ymax};
+                    } else if (forward[0].x === xmin) {
+                        // include topleft
+                        forwCorner = {x: xmin, y: ymax};
+                    }
+                } else {
+                    forwCorner = {x: xmin, y: ymax};
+                    forwCorner2 = {x: xmax, y: ymax};
+                }
+            } else if (forwEdge === 'bottom') {
+                // contains no corners.
+                if (forward[0].y === ymin && forward[1].y === ymin) {
+                    // add no corners
+                } else if (forward[0].y === ymin) {
+                    if (forward[1].x === xmax) {
+                        // include bottom right corner
+                        forwCorner = {x: xmax, y: ymin};
+                    } else if (forward[1].x === xmin) {
+                        // include bottom left
+                        forwCorner = {x: xmin, y: ymin};
+                    }
+
+                } else if (forward[1].y === ymax) {
+                    if (forward[0].x === xmax) {
+                        // include bottom right corner
+                        forwCorner = {x: xmax, y: ymin};
+                    } else if (forward[0].x === xmin) {
+                        // include bottom left
+                        forwCorner = {x: xmin, y: ymin};
+                    }
+                } else {
+                    forwCorner = {x: xmax, y: ymin};
+                    forwCorner2 = {x: xmin, y: ymin};
+                }
+            } else if (forwEdge === 'left') {
+                // no corners
+                if (forward[0].x === xmin && forward[1].x === xmin) {
+                    // add no corners
+                } else if (forward[0].x === xmin) {
+                    if (forward[1].y === ymax) {
+                        // include top left corner
+                        forwCorner = {x: xmin, y: ymax};
+                    } else if (forward[1].y === ymin) {
+                        // include bottom left
+                        forwCorner = {x: xmin, y: ymin};
+                    }
+                } else if (forward[1].x === xmin) {
+                    if (forward[0].y === ymax) {
+                        // include top left corner
+                        forwCorner = {x: xmin, y: ymax};
+                    } else if (forward[0].y === ymin) {
+                        // include bottom left
+                        forwCorner = {x: xmin, y: ymin};
+                    }
+                } else {
+                    forwCorner = {x: xmin, y: ymin};
+                    forwCorner2 = {x: xmin, y: ymax};
+                }
+            } else if (forwEdge === 'right') {
+                // no corners
+                if (forward[0].x === xmax && forward[1].x === xmax) {
+                    // add no corners
+                } else if (forward[0].x === xmax) {
+                    if (forward[1].y === ymax) {
+                        // include top right corner
+                        forwCorner = {x: xmax, y: ymax};
+                    } else if (forward[1].y === ymin) {
+                        // include bottom right
+                        forwCorner = {x: xmax, y: ymin};
+                    }
+                } else if (forward[1].x === xmax) {
+                    if (forward[0].y === ymax) {
+                        // include top right corner
+                        forwCorner = {x: xmax, y: ymax};
+                    } else if (forward[0].y === ymin) {
+                        // include bottom right
+                        forwCorner = {x: xmax, y: ymin};
+                    }
+                } else {
+                    forwCorner = {x: xmax, y: ymax};
+                    forwCorner2 = {x: xmax, y: ymin};
+                }
+
+            }
+
+            let backCorner = {};
+            let backCorner2 = {};
+
+            if (backEdge === 'top') {
+                // contains no corners.
+                if (backward[0].y === ymax && backward[1].y === ymax) {
+                    // add no corners
+                } else if (backward[0].y === ymax) {
+                    if (backward[1].x === xmax) {
+                        // include topright corner
+                        backCorner = {x: xmax, y: ymax};
+                    } else if (backward[1].x === xmin) {
+                        // include topleft
+                        backCorner = {x: xmin, y: ymax};
+                    }
+
+                } else if (backward[1].y === ymax) {
+                    if (backward[0].x === xmax) {
+                        // include topright corner
+                        backCorner = {x: xmax, y: ymax};
+                    } else if (backward[0].x === xmin) {
+                        // include topleft
+                        backCorner = {x: xmin, y: ymax};
+                    }
+                } else {
+                    backCorner = {x: xmin, y: ymax};
+                    backCorner2 = {x: xmax, y: ymax};
+                }
+            } else if (backEdge === 'bottom') {
+                // contains no corners.
+                if (backward[0].y === ymin && backward[1].y === ymin) {
+                    // add no corners
+                } else if (backward[0].y === ymin) {
+                    if (backward[1].x === xmax) {
+                        // include bottom right corner
+                        backCorner = {x: xmax, y: ymin};
+                    } else if (backward[1].x === xmin) {
+                        // include bottom left
+                        backCorner = {x: xmin, y: ymin};
+                    }
+
+                } else if (backward[1].y === ymax) {
+                    if (backward[0].x === xmax) {
+                        // include bottom right corner
+                        backCorner = {x: xmax, y: ymin};
+                    } else if (backward[0].x === xmin) {
+                        // include bottom left
+                        backCorner = {x: xmin, y: ymin};
+                    }
+                } else {
+                    backCorner = {x: xmax, y: ymin};
+                    backCorner2 = {x: xmin, y: ymin};
+                }
+            } else if (backEdge === 'left') {
+                // no corners
+                if (backward[0].x === xmin && backward[1].x === xmin) {
+                    // add no corners
+                } else if (backward[0].x === xmin) {
+                    if (backward[1].y === ymax) {
+                        // include top left corner
+                        backCorner = {x: xmin, y: ymax};
+                    } else if (backward[1].y === ymin) {
+                        // include bottom left
+                        backCorner = {x: xmin, y: ymin};
+                    }
+                } else if (backward[1].x === xmin) {
+                    if (backward[0].y === ymax) {
+                        // include top left corner
+                        backCorner = {x: xmin, y: ymax};
+                    } else if (backward[0].y === ymin) {
+                        // include bottom left
+                        backCorner = {x: xmin, y: ymin};
+                    }
+                } else {
+                    backCorner = {x: xmin, y: ymin};
+                    backCorner2 = {x: xmin, y: ymax};
+                }
+            } else if (backEdge === 'right') {
+                // no corners
+                if (backward[0].x === xmax && backward[1].x === xmax) {
+                    // add no corners
+                } else if (backward[0].x === xmax) {
+                    if (backward[1].y === ymax) {
+                        // include top right corner
+                        backCorner = {x: xmax, y: ymax};
+                    } else if (backward[1].y === ymin) {
+                        // include bottom right
+                        backCorner = {x: xmax, y: ymin};
+                    }
+                } else if (backward[1].x === xmax) {
+                    if (backward[0].y === ymax) {
+                        // include top right corner
+                        backCorner = {x: xmax, y: ymax};
+                    } else if (backward[0].y === ymin) {
+                        // include bottom right
+                        backCorner = {x: xmax, y: ymin};
+                    }
+                } else {
+                    backCorner = {x: xmax, y: ymax};
+                    backCorner2 = {x: xmax, y: ymin};
+                }
+
+            }
+
+
+            /*            if ((forward[0].x === xmax && forward[1].x !== xmax) ||
+                            (forward[1].x !== xmax && forward[0].x === xmax) ||
+                            (forward[1].x === xmax && forward[0].x !== xmax) ||
+                            (forward[0].x !== xmax && forward[1].x === xmax)) {
+                            forwCorner.x = xmax;
+                        } else if ((forward[0].x === xmin && forward[1].x !== xmin) ||
+                            (forward[1].x !== xmin && forward[0].x === xmin) ||
+                            (forward[1].x === xmin && forward[0].x !== xmin) ||
+                            (forward[0].x !== xmin && forward[1].x === xmin)) {
+                            forwCorner.x = xmin;
+                        }*/
+
+            /*           if ((forward[0].y === ymax && forward[1].y !== ymax) ||
+                           (forward[1].y !== ymax && forward[0].y === ymax) ||
+                           (forward[1].y === ymax && forward[0].y !== ymax) ||
+                           (forward[0].y !== ymax && forward[1].y === ymax)) {
+                           forwCorner.y = ymax;
+                       } else if ((forward[0].y === ymin && forward[1].y !== ymin) ||
+                           (forward[1].y !== ymin && forward[0].y === ymin) ||
+                           (forward[1].y === ymin && forward[0].y !== ymin) ||
+                           (forward[0].y !== ymin && forward[1].y === ymin)) {
+                           forwCorner.y = ymin;
+                       }
+
+                       if (forward[0].x === xmax && forward[1].x === xmin){
+                           forwCorner.x = xmax;
+                           forwCorner2.x = xmin;
+                           forwCorner2.y = forwCorner.y;
+                       } else if (forward[1].x === xmax && forward[0].x === xmin){
+                           forwCorner.x = xmin;
+                           forwCorner2.x = xmax;
+                           forwCorner2.y = forwCorner.y;
+                       }*/
+            console.log('forward cone');
+            console.log(forward);
+            console.log(forwCorner);
 
             // need to maintain ccw winding order, pair up points properly
             let forw_poly = [{x: coneInfo.source.x, y: coneInfo.source.y},
                 {x: forward[0].x, y: forward[0].y}];
 
-            let forwCorner = {};
-            if ((forward[0].x === xmax && forward[1].x !== xmax) ||
-                (forward[1].x !== xmax && forward[0].x === xmax) ||
-                (forward[1].x === xmax && forward[0].x !== xmax) ||
-                (forward[0].x !== xmax && forward[1].x === xmax)) {
-                forwCorner.x = xmax;
-            } else if ((forward[0].x === xmin && forward[1].x !== xmin) ||
-                (forward[1].x !== xmin && forward[0].x === xmin) ||
-                (forward[1].x === xmin && forward[0].x !== xmin) ||
-                (forward[0].x !== xmin && forward[1].x === xmin)) {
-                forwCorner.x = xmin;
-            }
-
-
-            if ((forward[0].y === ymax && forward[1].y !== ymax) ||
-                (forward[1].y !== ymax && forward[0].y === ymax) ||
-                (forward[1].y === ymax && forward[0].y !== ymax) ||
-                (forward[0].y !== ymax && forward[1].y === ymax)) {
-                forwCorner.y = ymax;
-            } else if ((forward[0].y === ymin && forward[1].y !== ymin) ||
-                (forward[1].y !== ymin && forward[0].y === ymin) ||
-                (forward[1].y === ymin && forward[0].y !== ymin) ||
-                (forward[0].y !== ymin && forward[1].y === ymin)) {
-                forwCorner.y = ymin;
-            }
-
             if (forwCorner.hasOwnProperty('x') && forwCorner.hasOwnProperty('y')) {
                 forw_poly.push(forwCorner);
             }
+
+            if (forwCorner2.hasOwnProperty('x') && forwCorner2.hasOwnProperty('y')) {
+                forw_poly.push(forwCorner2);
+            }
+
             forw_poly.push({x: forward[1].x, y: forward[1].y});
             forw_poly.push({x: coneInfo.source.x, y: coneInfo.source.y});
 
@@ -740,34 +1041,37 @@ function drawExampleViz(el, data, error, height, width) {
             let back_poly = [{x: coneInfo.source.x, y: coneInfo.source.y}];
             back_poly.push({x: backward[0].x, y: backward[0].y});
 
-            let bCorner = {};
-            if ((backward[0].x === xmax && backward[1].x !== xmax) ||
-                (backward[1].x !== xmax && backward[0].x === xmax) ||
-                (backward[1].x === xmax && backward[0].x !== xmax) ||
-                (backward[0].x !== xmax && backward[1].x === xmax)) {
-                bCorner.x = xmax;
-            } else if ((backward[0].x === xmin && backward[1].x !== xmin) ||
-                (backward[1].x !== xmin && backward[0].x === xmin) ||
-                (backward[1].x === xmin && backward[0].x !== xmin) ||
-                (backward[0].x !== xmin && backward[1].x === xmin)) {
-                bCorner.x = xmin;
+            /*            let bCorner = {};
+                        if ((backward[0].x === xmax && backward[1].x !== xmax) ||
+                            (backward[1].x !== xmax && backward[0].x === xmax) ||
+                            (backward[1].x === xmax && backward[0].x !== xmax) ||
+                            (backward[0].x !== xmax && backward[1].x === xmax)) {
+                            bCorner.x = xmax;
+                        } else if ((backward[0].x === xmin && backward[1].x !== xmin) ||
+                            (backward[1].x !== xmin && backward[0].x === xmin) ||
+                            (backward[1].x === xmin && backward[0].x !== xmin) ||
+                            (backward[0].x !== xmin && backward[1].x === xmin)) {
+                            bCorner.x = xmin;
+                        }
+
+
+                        if ((backward[0].y === ymax && backward[1].y !== ymax) ||
+                            (backward[1].y !== ymax && backward[0].y === ymax) ||
+                            (backward[1].y === ymax && backward[0].y !== ymax) ||
+                            (backward[0].y !== ymax && backward[1].y === ymax)) {
+                            bCorner.y = ymax;
+                        } else if ((backward[0].y === ymin && backward[1].y !== ymin) ||
+                            (backward[1].y !== ymin && backward[0].y === ymin) ||
+                            (backward[1].y === ymin && backward[0].y !== ymin) ||
+                            (backward[0].y !== ymin && backward[1].y === ymin)) {
+                            bCorner.y = ymin;
+                        }*/
+
+            if (backCorner.hasOwnProperty('x') && backCorner.hasOwnProperty('y')) {
+                back_poly.push(backCorner);
             }
-
-
-            if ((backward[0].y === ymax && backward[1].y !== ymax) ||
-                (backward[1].y !== ymax && backward[0].y === ymax) ||
-                (backward[1].y === ymax && backward[0].y !== ymax) ||
-                (backward[0].y !== ymax && backward[1].y === ymax)) {
-                bCorner.y = ymax;
-            } else if ((backward[0].y === ymin && backward[1].y !== ymin) ||
-                (backward[1].y !== ymin && backward[0].y === ymin) ||
-                (backward[1].y === ymin && backward[0].y !== ymin) ||
-                (backward[0].y !== ymin && backward[1].y === ymin)) {
-                bCorner.y = ymin;
-            }
-
-            if (bCorner.hasOwnProperty('x') && bCorner.hasOwnProperty('y')) {
-                back_poly.push(bCorner);
+            if (backCorner2.hasOwnProperty('x') && backCorner2.hasOwnProperty('y')) {
+                back_poly.push(backCorner2);
             }
 
             back_poly.push({x: backward[1].x, y: backward[1].y});
@@ -1124,14 +1428,14 @@ function drawExampleViz(el, data, error, height, width) {
             bottomY = true;
         }
 
-        let yLeftX = Math.floor(getYFromXForLine(p2, p1, xmin));
+        let yLeftX = getYFromXForLine(p2, p1, xmin);
         //console.log(yLeftX);
         if (((yLeftX <= ymax) && (yLeftX >= ymin))) {
             // intersect left boundary in range
             leftX = true;
         }
 
-        let yRightX = Math.floor(getYFromXForLine(p1, p2, xmax));
+        let yRightX = getYFromXForLine(p1, p2, xmax);
         //console.log(yRightX);
         if (((yRightX <= ymax) && (yRightX >= ymin))) {
             // intersect right boundary in range
@@ -1196,9 +1500,11 @@ function drawExampleViz(el, data, error, height, width) {
         let exmax = xmax;
 
         if (isVertical(p1, p2)) {
+            console.log('is vertical');
             return [{x: p1.x, y: eymin}, {x: p1.x, y: eymax}];
         }
         if (isHorizontal(p1, p2)) {
+            console.log('is horizontal');
             return [{x: exmin, y: p1.y}, {x: exmax, y: p1.y}];
         }
 
@@ -1223,6 +1529,7 @@ function drawExampleViz(el, data, error, height, width) {
         }
 
         if (points.length !== 2) {
+            console.log(itx);
             console.log(points);
             throw new Error('wrong number of points!');
         }
@@ -1388,6 +1695,12 @@ function drawExampleViz(el, data, error, height, width) {
         });
     }
 
+    function hideDiscs() {
+        data.nodes.forEach(function (n, idx) {
+            n.disc = false;
+        });
+    }
+
     function clearCones() {
         data.nodes.forEach(function (n, idx) {
             if (n.hasOwnProperty('cones')) {
@@ -1402,9 +1715,9 @@ function drawExampleViz(el, data, error, height, width) {
     // todo: show cones from each starting point, place edges
     // todo: should just hard code for the cone viz
     function drawConeFromSource(srcIdx, tgtIdx) {
-        console.log('drawconefromsource');
-        console.log(srcIdx);
-        console.log(tgtIdx);
+        /*        console.log('drawconefromsource');
+                console.log(srcIdx);
+                console.log(tgtIdx);*/
         data.nodes.forEach(function (n, idx) {
             if (srcIdx === idx) {
                 if (n.hasOwnProperty('cones')) {
@@ -1439,7 +1752,11 @@ function drawExampleViz(el, data, error, height, width) {
         clearCones: clearCones,
         drawConeFromSource: drawConeFromSource,
         findEdgesToussaint: findEdgesToussaint,
-        data: data
+        data: data,
+        enableInput: enableInput,
+        disableInput: disableInput,
+        clearNodes: clearNodes,
+        hideDiscs: hideDiscs
     }
 }
 
@@ -1853,7 +2170,6 @@ const ConeVisualization = function (params) {
 const DemoVisualization = function (params) {
 
     let viz = drawExampleViz(params.vizEl, params.data, params.error, params.h, params.w);
-    viz.findEdgesToussaint();
     viz.draw();
 
     let self = this;
@@ -1887,10 +2203,30 @@ const DemoVisualization = function (params) {
 
     this.showFirst = function () {
         viz.resetShortestPath();
+        viz.hideApproximation();
+        viz.clearCones();
+        viz.hideDiscs();
+        //viz.clearNodes();
+        this.state.steps = introSteps;
+
         self.state.stepIndex = 0;
         setControlState(self.state);
         return showStep(self.state);
     };
+
+    let demorange = document.getElementById('epsilonRange_demo');
+    demorange.value = params.error;
+    let demoeps = document.getElementById("demo-epsilon");
+    demoeps.textContent = demorange.value;
+    let updateDiscs = function (e) {
+        if (e.target) {
+            demoeps.textContent = e.target.value;
+            viz.updateError(parseFloat(e.target.value));
+            viz.draw();
+        }
+    };
+
+    ["input"].map(ev => demorange.addEventListener(ev, updateDiscs, false));
 
 
     this.clickHandler = function (e) {
@@ -1898,7 +2234,8 @@ const DemoVisualization = function (params) {
     };
 
     this.generateSteps = function () {
-        console.log('generate steps');
+        console.log('generate demo steps');
+        viz.findEdgesToussaint();
         let steps = [];
         viz.data.nodes.forEach(function (n, srcIdx) {
             if (n.hasOwnProperty('cones')) {
@@ -1980,7 +2317,45 @@ const DemoVisualization = function (params) {
         steps: []
     };
 
-    this.state.steps = this.generateSteps();
+    this.state.steps = [];
+    let clickAction = function () {
+        viz.enableInput();
+    };
+
+    let epsilonAction = function () {
+        viz.disableInput();
+
+        viz.drawDiscsFromSource(0);
+        console.log(viz.data);
+        viz.draw();
+    };
+
+    let generateConesAction = function () {
+        self.state.steps = self.state.steps.concat(self.generateSteps());
+        console.log('state');
+        console.log(self.state);
+        console.log(self.state.steps.length);
+        setControlState(self.state);
+    };
+
+    let introSteps = [
+        {
+            'step': 0,
+            'message': 'Click to add points to a polygonal chain.',
+            'action': clickAction
+        },
+        {
+            'step': 1,
+            'message': 'Select an epsilon value for your simplification.',
+            'action': epsilonAction
+        },
+        {
+            'step': 1,
+            'message': 'Click next to step through cones.',
+            'action': generateConesAction
+        }];
+
+
     this.showFirst();
 
 };
@@ -2047,10 +2422,10 @@ coneViz.state.viz.draw();
 
 let demoViz = new DemoVisualization({
     vizEl: "#vizDemo",
-    data: cloneDeep(demoData),
+    data: {"nodes": [], "edges": []},
     error: 5,
     h: 750,
-    w: 1000
+    w: 750
 });
 demoViz.state.viz.drawDiscsFromSource(0);
 demoViz.state.viz.draw();

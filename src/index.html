@@ -210,7 +210,7 @@
                             <div class="card-text">
                                 <form>
                                     <div class="form-group">
-                                        <input type="range" class="form-control-range" step="0.5" min="0" max="7"
+                                        <input type="range" class="form-control-range" step="0.5" min="1" max="7"
                                                id="epsilonRange_strip"
                                                style="width:50%;">
                                     </div>
@@ -428,7 +428,7 @@
             <div class="card citation">
                 <div class="card-body">
                     <p>
-                        Chan W.S., Chin F. (1992) Approximation of polygonal curves with minimum number of line
+                        <b>Chan W.S., Chin F. </b>(1992) Approximation of polygonal curves with minimum number of line
                         segments. In: Ibaraki T., Inagaki Y., Iwama K., Nishizeki T., Yamashita M. (eds) Algorithms and
                         Computation. ISAAC 1992. Lecture Notes in Computer Science, vol 650. Springer, Berlin,
                         Heidelberg
@@ -465,10 +465,22 @@
                         <div id="vizDemo">
                         </div>
                     </div>
-                    <div id="message-demo-1" style="display:none;"></div>
+
                 </div>
-                <div class="modal-footer">
-                    <div class="controls" style="padding: 1em;">
+                <div class="container-fluid" style="padding:1em;">
+                    <div class="row">
+                        <div class="col-6">
+                            <form>
+                                <div class="form-group">
+                                    <label for="epsilonRange_demo">&epsilon;: <span id="demo-epsilon">0</span> </label>
+                                    <input type="range" class="form-control-range" step="0.5" min="1" max="7"
+                                           id="epsilonRange_demo">
+                                </div>
+                            </form>
+                            <div id="message-demo-1" style=""></div>
+                        </div>
+
+                        <div class="controls col-5" style="padding: 1em;">
                         <button class="btn btn-outline-primary" id="rewindDemoedges1">&lt;&lt;
                         </button>
                         <button class="btn btn-outline-primary" id="backwardDemoedges1">previous step
@@ -478,7 +490,8 @@
                         <button class="btn btn-outline-primary" id="ffDemoedges1">&gt;&gt;
                         </button>
                     </div>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary col-1" data-dismiss="modal">Close</button>
+                </div>
                 </div>
             </div>
         </div>
